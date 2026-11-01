@@ -1,0 +1,49 @@
+EasyServ - Termos de uso e licença
+© 2026 Pedro. Todos os direitos reservados.
+
+1. Código visível, todos os direitos reservados
+   O código-fonte do EasyServ está publicado no GitHub somente para
+   visualização, como portfólio. Ele NÃO é software livre nem de código
+   aberto: publicar o código não dá permissão para usá-lo.
+   Sem autorização por escrito do autor, não é permitido usar, copiar,
+   modificar, compilar, instalar, vender, alugar, redistribuir ou publicar
+   o EasyServ (nem partes do código, das imagens ou da logo), nem remover
+   estes avisos de direitos autorais.
+   Ler o código e criar uma cópia temporária só para olhar no navegador ou
+   no editor, como o próprio GitHub permite, é aceito.
+
+2. Quem pode usar o programa
+   Só quem recebeu autorização do autor pode instalar e usar o EasyServ,
+   nos computadores do próprio estabelecimento. Ao instalar ou usar o
+   programa, você concorda com estes termos.
+
+3. Bibliotecas de terceiros
+   As bibliotecas que vão junto com o programa (PySide6/Qt, openpyxl e
+   outras) continuam com as licenças delas (veja LICENCAS_TERCEIROS.txt), e
+   nada aqui limita os direitos que essas licenças dão a você.
+
+4. Não é documento fiscal
+   As notinhas, resumos e relatórios do EasyServ NÃO são documentos fiscais
+   e não substituem nota fiscal, cupom fiscal ou qualquer obrigação fiscal
+   do estabelecimento.
+
+5. Seus dados
+   Os dados (atendimentos, configurações, notas e relatórios) ficam somente
+   no seu computador, na pasta %APPDATA%\EasyServ. O EasyServ não envia
+   esses dados para lugar nenhum. A única conexão com a internet é para
+   consultar se existe uma versão nova no GitHub (sem enviar dados seus).
+   Faça backups com frequência: você é responsável pela guarda dos seus
+   dados e pelo cumprimento da LGPD em relação aos dados dos seus clientes.
+
+6. Sem garantia
+   O EasyServ é fornecido "no estado em que se encontra", sem garantia de
+   qualquer tipo. O autor não se responsabiliza por perdas de dados, lucros
+   cessantes ou prejuízos decorrentes do uso ou da impossibilidade de uso do
+   programa. Confira sempre os valores antes de cobrar.
+
+7. Atualizações
+   Versões novas são oferecidas pelo próprio programa e só são instaladas
+   se você confirmar. Estes termos valem também para as atualizações.
+
+Pedidos de autorização e dúvidas: fale com o autor (Pedro), pelo GitHub:
+https://github.com/SrNomu/easyserv

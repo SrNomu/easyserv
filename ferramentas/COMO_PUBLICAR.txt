@@ -1,0 +1,81 @@
+EasyServ - Como gerar o instalador e publicar uma versão nova
+==============================================================
+
+PARTE 1 - Uma vez só: criar o repositório no GitHub
+---------------------------------------------------
+1. Entre em https://github.com e crie uma conta (se ainda não tiver).
+2. Clique em "New repository" (botão verde, ou o "+" lá em cima).
+   - Repository name: easyserv   (pode ser outro nome)
+   - Marque "Public" (as atualizações só funcionam com repositório público,
+     porque o programa não guarda senha nem token).
+   - Clique em "Create repository".
+   Não precisa colocar o código lá: o repositório serve só para as versões.
+3. No arquivo versao.py, preencha o endereço (usuário/repositório):
+       REPOSITORIO_GITHUB = "seu-usuario/easyserv"
+   A partir da próxima versão gerada, o EasyServ passa a procurar atualizações.
+   (A versão que já está instalada só vai procurar depois que ela mesma tiver
+   esse endereço: por isso a primeira instalação com o endereço é feita "na mão".)
+
+
+PARTE 2 - A cada versão nova: gerar o instalador
+------------------------------------------------
+1. Em versao.py:
+   - aumente VERSAO (ex.: de "1.2" para "1.3");
+   - coloque um bloco novo NO COMEÇO de NOTAS_DA_VERSAO contando o que mudou.
+2. Rode todos os testes e confira que está tudo OK.
+3. Abra o terminal na pasta do projeto e rode:
+       python ferramentas\gerar_instalador.py
+   (ou dê dois cliques em gerar_instalador.bat)
+   Ele faz tudo sozinho: ícones, programa, atualizador, lista de arquivos,
+   instalador (Inno Setup) e o código SHA-256. Demora uns 3 a 5 minutos.
+4. No fim aparecem os dois arquivos que vão para o GitHub:
+       dist\EasyServ_Setup_1.3.exe
+       dist\EasyServ_Setup_1.3.exe.sha256
+5. Teste o instalador no seu computador antes de publicar (instale por cima
+   da versão anterior e confira se os dados continuam lá).
+
+Precisa ter instalado (só uma vez): Python com as bibliotecas do
+requirements.txt (python -m pip install -r requirements.txt) e o
+Inno Setup 6 (https://jrsoftware.org/isdl.php).
+
+
+PARTE 3 - A cada versão nova: publicar no GitHub
+------------------------------------------------
+1. Abra o repositório no GitHub e clique em "Releases" (coluna da direita)
+   e depois em "Draft a new release" (ou "Create a new release").
+2. "Choose a tag": digite v1.3 (a letra v + o número da VERSAO) e clique em
+   "Create new tag: v1.3 on publish".
+3. "Release title": EasyServ 1.3
+4. Na caixa de descrição, escreva as novidades. É ESTE texto que aparece na
+   janela "Atualização disponível" do programa. Dá para usar listas:
+       - Coisa nova 1
+       - Correção tal
+5. Arraste para a área "Attach binaries" os DOIS arquivos:
+       EasyServ_Setup_1.3.exe
+       EasyServ_Setup_1.3.exe.sha256
+   Espere os dois terminarem de subir.
+6. Deixe DESMARCADO "Set as a pre-release" e clique em "Publish release".
+   (Rascunhos e pre-releases são ignorados pelo programa.)
+
+Pronto: na próxima vez que o EasyServ abrir (com internet), ele mostra a
+versão nova e pergunta se quer atualizar.
+
+Importante:
+- Nunca apague nem troque o arquivo de uma versão já publicada. Se errou,
+  publique uma versão nova (ex.: 1.3.1).
+- O arquivo .sha256 é obrigatório: sem ele (ou se ele não bater com o
+  instalador), o programa se recusa a instalar.
+- Nunca coloque senha, token ou chave no código do programa.
+
+
+Como a atualização acontece no computador da loja
+-------------------------------------------------
+1. Ao abrir, o EasyServ consulta o GitHub (sem internet: abre normalmente).
+2. Se tiver versão nova, mostra as novidades com "Atualizar agora" e "Depois".
+   Com um atendimento em andamento, ele não atualiza.
+3. "Atualizar agora": baixa o instalador, confere o SHA-256, faz backup do
+   banco (pasta backups) e da versão atual do programa (backups\programa).
+4. O EasyServ fecha, o EasyServAtualizador roda o instalador em modo
+   silencioso e abre o EasyServ atualizado.
+5. Os dados ficam em %APPDATA%\EasyServ e não são tocados.
+   Registro do que aconteceu: %APPDATA%\EasyServ\atualizacoes\atualizacao.log

@@ -1,0 +1,6 @@
+# Instale tudo com:  python -m pip install -r requirements.txt
+PySide6-Essentials  # a interface (janela, painéis, botões) - Qt para Python
+pillow              # desenha as notinhas (logo, fonte) e a pré-visualização
+pywin32             # manda as notas para a impressora do Windows
+openpyxl            # exporta o relatório do dia em Excel (.xlsx)
+pyinstaller         # só é necessário para gerar o programa e o instalador (com o Inno Setup 6)

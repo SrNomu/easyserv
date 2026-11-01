@@ -1,0 +1,49 @@
+# ---- Dados (nunca vão para o GitHub) ----
+# Bancos de dados (atendimentos), inclusive o do treino e cópias
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+# Configurações e preferências da loja (o programa cria os padrões sozinho)
+/config.json
+/preferencias.json
+/layout_notas.json
+/migracao.json
+/portatil.txt
+# Notas, relatórios, backups, imagens da loja e atualizações baixadas
+/notas/
+/notas_treino/
+/relatorios/
+/relatorios_treino/
+/backups/
+/imagens/
+/atualizacoes/
+/logo.png
+*.log
+# Prints antigos (tirados com os dados da loja); os do README ficam em docs/prints
+/prints/
+# Versão antiga em Tkinter (fora de uso)
+/versao_tkinter/
+# Arquivos de teste
+/teste_*.py
+/q_*/
+/s_*/
+
+# ---- Gerados ----
+dist/
+build/
+*.spec
+manifesto.json
+__pycache__/
+*.py[cod]
+
+# ---- Ambientes virtuais e editores ----
+.venv/
+venv/
+env/
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+desktop.ini

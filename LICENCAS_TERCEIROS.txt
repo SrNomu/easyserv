@@ -1,0 +1,55 @@
+EasyServ - Licenças de terceiros
+
+O EasyServ usa as bibliotecas abaixo. Cada uma pertence aos seus autores e é
+distribuída sob a sua própria licença. Os textos completos das licenças estão
+nos endereços indicados.
+
+----------------------------------------------------------------------------
+Qt 6 e PySide6 / Shiboken6 (Qt for Python) - versão 6.12
+Licença: GNU Lesser General Public License v3 (LGPL v3)
+https://www.qt.io/qt-for-python  -  https://www.gnu.org/licenses/lgpl-3.0.html
+
+O EasyServ usa o Qt e o PySide6 sem modificações, como bibliotecas separadas
+(arquivos .dll e .pyd na pasta "_internal" do programa instalado). Você pode
+substituir essas bibliotecas por outra versão compatível. O código-fonte do
+Qt e do PySide6 está disponível em https://download.qt.io/ e
+https://code.qt.io/.
+
+----------------------------------------------------------------------------
+Python - versão 3.13
+Licença: Python Software Foundation License (PSF)
+https://docs.python.org/3/license.html
+
+----------------------------------------------------------------------------
+openpyxl - versão 3.1 (exportar Excel)
+Licença: MIT
+https://openpyxl.readthedocs.io/
+
+et_xmlfile - versão 2.0 (usado pelo openpyxl)
+Licença: MIT
+https://foss.heptapod.net/openpyxl/et_xmlfile
+
+----------------------------------------------------------------------------
+Pillow - versão 12.2 (desenho das notinhas)
+Licença: MIT-CMU (HPND)
+https://python-pillow.org/  -  https://github.com/python-pillow/Pillow/blob/main/LICENSE
+
+----------------------------------------------------------------------------
+pywin32 - versão 312 (impressão no Windows)
+Licença: Python Software Foundation License (PSF)
+https://github.com/mhammond/pywin32
+
+----------------------------------------------------------------------------
+PyInstaller - versão 6.22 (empacotamento do programa)
+Licença: GPL v2 ou posterior, com exceção que permite distribuir os programas
+gerados com qualquer licença.
+https://pyinstaller.org/  -  https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt
+
+----------------------------------------------------------------------------
+Inno Setup - versão 6 (instalador)
+Licença: Inno Setup License (uso gratuito, inclusive comercial)
+https://jrsoftware.org/files/is/license.txt
+
+Licença MIT (openpyxl, et_xmlfile), resumo: é permitido usar, copiar,
+modificar e distribuir, desde que o aviso de copyright e a licença sejam
+mantidos. O software é fornecido sem garantia.
