@@ -6,7 +6,8 @@ ferramentas/gerar_instalador.py - Gera o EasyServ inteiro, pronto para publicar:
 O que ele faz (na ordem):
   1. gera os ícones a partir da logo (recursos/easyserv.svg);
   2. gera o programa (PyInstaller, pasta dist\\EasyServ com EasyServ.exe);
-  3. gera o atualizador separado (EasyServAtualizador.exe) e põe junto do programa;
+  3. gera o atualizador separado (EasyServAtualizador.exe) e põe junto do programa,
+     e roda o autoteste do módulo de impressão no EasyServ.exe gerado;
   4. anota o tamanho de cada arquivo (manifesto.json, usado na tela de abertura);
   5. gera o instalador com o Inno Setup: dist\\EasyServ_Setup_<versão>.exe;
   6. calcula o SHA-256 do instalador: dist\\EasyServ_Setup_<versão>.exe.sha256.
@@ -31,6 +32,13 @@ import versao  # noqa: E402
 DIST, BUILD = os.path.join(RAIZ, "dist"), os.path.join(RAIZ, "build")
 PASTA_PROGRAMA = os.path.join(DIST, "EasyServ")
 ICONE = os.path.join(RAIZ, "recursos", "easyserv.ico")
+# Bibliotecas de impressão que o impressao.py carrega "na hora" (o PyInstaller não as
+# enxerga sozinho): sem elas, o "Imprimir teste" do programa instalado não funciona.
+IMPORTS_ESCONDIDOS = ["pywintypes", "win32print", "win32ui", "win32con", "win32api",
+                      "PIL.Image", "PIL.ImageWin", "PIL.ImageDraw", "PIL.ImageFont"]
+# O win32ui precisa do mfc140u.dll (Visual C++). O PyInstaller não o leva, porque ele está
+# em System32 neste computador; mas nem todo Windows tem: por isso ele vai junto do win32ui.
+MFC = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "mfc140u.dll")
 LUGARES_ISCC = [
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Inno Setup 6", "ISCC.exe"),
     r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
@@ -70,6 +78,19 @@ def arquivo_de_versao():
     return caminho
 
 
+def autoteste_no_exe(exe):
+    """
+    Roda o teste do EasyServ.exe GERADO (testes/teste_exe.py: --autoteste-impressao, sem
+    janela, sem imprimir nada) e para tudo se o módulo de impressão não carregar nele.
+    """
+    sys.path.insert(0, os.path.join(RAIZ, "testes"))
+    import teste_exe
+    certo, linhas = teste_exe.testar_exe(exe)
+    print("\n".join(linhas))
+    if not certo:
+        raise SystemExit("O módulo de impressão NÃO carrega no .exe gerado. Instalador não foi gerado.")
+
+
 def main():
     print(f"Gerando {versao.titulo()}")
 
@@ -77,13 +98,17 @@ def main():
     rodar([sys.executable, os.path.join("ferramentas", "gerar_icones.py")])
 
     passo("2/6 Programa (PyInstaller)")
+    if not os.path.exists(MFC):
+        raise SystemExit(f"Não achei {MFC}. Instale o \"Visual C++ Redistributable\" (x64) da Microsoft.")
     shutil.rmtree(PASTA_PROGRAMA, ignore_errors=True)
+    escondidos = [opcao for nome in IMPORTS_ESCONDIDOS for opcao in ("--hidden-import", nome)]
     rodar([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--name", "EasyServ",
            "--icon", ICONE, "--version-file", arquivo_de_versao(),
            # (com --specpath, caminhos relativos seriam lidos a partir da pasta build: por isso absolutos)
            "--add-data", f"{os.path.join(RAIZ, 'recursos')}{os.pathsep}recursos",
            "--add-data", f"{os.path.join(RAIZ, 'LICENCA.txt')}{os.pathsep}.",
            "--add-data", f"{os.path.join(RAIZ, 'LICENCAS_TERCEIROS.txt')}{os.pathsep}.",
+           *escondidos, "--add-binary", f"{MFC}{os.pathsep}pythonwin",
            # (numpy vem junto à toa por causa do Pillow: são uns 27 MB que o programa não usa)
            "--exclude-module", "tkinter", "--exclude-module", "versao_tkinter", "--exclude-module", "numpy",
            "--distpath", DIST, "--workpath", BUILD, "--specpath", BUILD,
@@ -96,6 +121,9 @@ def main():
            "--distpath", os.path.join(BUILD, "atualizador"), "--workpath", BUILD, "--specpath", BUILD,
            os.path.join(RAIZ, "atualizador", "atualizador.py")])
     shutil.copy2(os.path.join(BUILD, "atualizador", "EasyServAtualizador.exe"), PASTA_PROGRAMA)
+
+    passo("Autoteste do módulo de impressão no .exe gerado")
+    autoteste_no_exe(os.path.join(PASTA_PROGRAMA, "EasyServ.exe"))
 
     passo("4/6 Manifesto (lista de arquivos)")
     # (LICENCA.txt e LICENCAS_TERCEIROS.txt também vão para a pasta do programa)

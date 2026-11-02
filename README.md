@@ -31,7 +31,8 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 - Dados da loja (nome, endereço, telefone, CNPJ e logo) preenchidos uma vez só, na janela de boas-vindas, e usados no programa inteiro: título da janela, notinhas, relatórios e páginas de teste.
 - Via da loja (salva em .txt) e via do cliente (impressa), com editor visual e pré-visualização.
 - Papel de 58 mm, 80 mm ou A4, logo, fonte, alinhamento e o que mostrar em cada via.
-- Funciona com impressoras térmicas de texto e com qualquer impressora do Windows.
+- Funciona com qualquer impressora do Windows e, nas térmicas (Tomate, Elgin, Bematech, Epson, Knup, POS-58/POS-80), também em ESC/POS direto: corte do papel, gaveta de dinheiro, negrito, letra grande e logo em preto e branco.
+- Botão "Detectar": imprime uma página de teste em cada modo e escolhe o que funcionou.
 
 **Relatório do dia**
 - Totais por serviço, categoria, forma de pagamento e hora, e a lista dos atendimentos.
@@ -120,7 +121,7 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 | **openpyxl** | exportação do relatório para Excel |
 | **Pillow** e **pywin32** | desenho e impressão das notinhas no Windows |
 | **PyInstaller** e **Inno Setup** | o programa (.exe) e o instalador |
-| **Testes automáticos** | 752 verificações em 10 baterias (veja [Testes](#testes)) |
+| **Testes automáticos** | 844 verificações em 11 baterias, mais o teste do .exe gerado (veja [Testes](#testes)) |
 
 ## Como instalar
 
@@ -147,11 +148,13 @@ Para gerar o programa e o instalador, é preciso também o [Inno Setup 6.6 ou ma
 
 ## Testes
 
-O projeto tem **10 baterias de testes automáticos, com 752 verificações**, na pasta [`testes/`](testes). Elas abrem as telas de verdade e conferem as contas (troco, taxa da maquininha, boletos), as notinhas, os dados da loja, o relatório (tela, PDF, Excel e resumo), os atalhos, os layouts (inclusive em telas de 1280 a 1440 px), o backup e a restauração, a privacidade dos dados do cliente, o instalador e a atualização automática.
+O projeto tem **11 baterias de testes automáticos, com 844 verificações**, na pasta [`testes/`](testes). Elas abrem as telas de verdade e conferem as contas (troco, taxa da maquininha, boletos), as notinhas, os dados da loja, o relatório (tela, PDF, Excel e resumo), os atalhos, os layouts (inclusive em telas de 1280 a 1440 px), o backup e a restauração, a privacidade dos dados do cliente, o instalador, a atualização automática e a impressão (driver do Windows e ESC/POS, com impressoras falsas).
 
 ```bat
 python testes\rodar_testes.py
 ```
+
+Além delas, `python testes\teste_exe.py` testa o **programa gerado** (o `EasyServ.exe`, não o código): confere se o módulo de impressão carrega dentro dele. O gerador do instalador roda esse teste sozinho e para se ele falhar.
 
 Cada bateria roda numa cópia do programa, numa pasta temporária: os testes nunca mexem nos dados de verdade, nunca imprimem numa impressora real e nunca acessam a internet.
 

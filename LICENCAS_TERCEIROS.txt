@@ -40,6 +40,12 @@ Licença: Python Software Foundation License (PSF)
 https://github.com/mhammond/pywin32
 
 ----------------------------------------------------------------------------
+Microsoft Foundation Classes - mfc140u.dll (usada pelo win32ui, do pywin32)
+Licença: arquivo redistribuível do Microsoft Visual C++ (lista "Distributable
+Code" do Visual Studio). Vai junto do programa porque nem todo Windows tem.
+https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files
+
+----------------------------------------------------------------------------
 PyInstaller - versão 6.22 (empacotamento do programa)
 Licença: GPL v2 ou posterior, com exceção que permite distribuir os programas
 gerados com qualquer licença.

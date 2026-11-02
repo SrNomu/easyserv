@@ -10,6 +10,9 @@ A abertura acontece nesta ordem, com a tela de abertura mostrando cada etapa:
   4. Abre a janela principal e, se tiver versão nova, pergunta se quer atualizar.
 
     EasyServ.exe --backup-para <pasta>   (só faz um backup, sem janela: usado pelo desinstalador)
+    EasyServ.exe --autoteste-impressao <arquivo.txt>
+        (sem janela e sem imprimir nada: confere se o módulo de impressão carrega dentro do
+         programa gerado e grava o resultado no arquivo; código de saída 0 = tudo certo)
 """
 
 import ctypes
@@ -104,9 +107,28 @@ def backup_sem_janela(pasta):
     return 0
 
 
+def autoteste_impressao(arquivo):
+    """
+    EasyServ.exe --autoteste-impressao <arquivo>: confere as bibliotecas de impressão
+    (pywin32 e Pillow) DENTRO do .exe. Nunca imprime. Devolve 0 = tudo certo, 1 = falhou.
+    """
+    import impressao
+    resultado = impressao.verificar_modulos()
+    linhas = [f"{versao.titulo()} - autoteste do módulo de impressão",
+              f"programa instalado (.exe): {'sim' if getattr(sys, 'frozen', False) else 'não'}", ""]
+    linhas += [f"{'OK   ' if certo else 'FALHA'} {nome}: {detalhe}" for nome, certo, detalhe in resultado]
+    falhas = sum(not certo for _, certo, _ in resultado)
+    linhas += ["", f"RESULTADO: {'OK' if not falhas else f'{falhas} FALHA(S)'}"]
+    with open(arquivo, "w", encoding="utf-8") as saida:
+        saida.write("\n".join(linhas) + "\n")
+    return 1 if falhas else 0
+
+
 def main():
     if len(sys.argv) == 3 and sys.argv[1] == "--backup-para":
         return backup_sem_janela(sys.argv[2])
+    if len(sys.argv) == 3 and sys.argv[1] == "--autoteste-impressao":
+        return autoteste_impressao(sys.argv[2])
     identificar_no_windows()
     app = QApplication(sys.argv)  # o "motor" do Qt: precisa existir antes de qualquer janela
     app.setApplicationName(versao.NOME_PROGRAMA)

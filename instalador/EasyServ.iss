@@ -2,8 +2,8 @@
 ;
 ; Não precisa rodar este arquivo na mão: o ferramentas\gerar_instalador.py gera o
 ; programa, depois chama o Inno Setup assim:
-;     ISCC.exe /DVersao=1.4.1 instalador\EasyServ.iss
-; e o resultado sai em dist\EasyServ_Setup_1.4.1.exe.
+;     ISCC.exe /DVersao=1.4.2 instalador\EasyServ.iss
+; e o resultado sai em dist\EasyServ_Setup_1.4.2.exe.
 ;
 ; Visual: o mesmo da tela de abertura do programa (tela_abertura.py). Sempre escuro,
 ; com o degradê vinho no fundo de todas as telas, a logo grande, "EasyServ" com a
@@ -23,7 +23,7 @@
 #endif
 
 #ifndef Versao
-  #define Versao "1.4.1"
+  #define Versao "1.4.2"
 #endif
 #define Nome "EasyServ"
 #define Exe "EasyServ.exe"

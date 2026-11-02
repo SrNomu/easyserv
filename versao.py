@@ -10,7 +10,7 @@ Ao lançar uma versão nova:
 """
 
 NOME_PROGRAMA = "EasyServ"
-VERSAO = "1.4.1"
+VERSAO = "1.4.2"
 AUTOR = "Pedro"
 ANO = "2026"
 COPYRIGHT = f"© {ANO} {AUTOR}. Todos os direitos reservados."
@@ -29,6 +29,8 @@ BIBLIOTECAS = [
     ("et_xmlfile", "2.0", "MIT", "https://foss.heptapod.net/openpyxl/et_xmlfile"),
     ("Pillow", "12.2", "MIT-CMU (HPND)", "https://python-pillow.org/"),
     ("pywin32", "312", "PSF License", "https://github.com/mhammond/pywin32"),
+    ("Microsoft MFC (mfc140u.dll, usada pelo pywin32)", "14", "Visual C++ Redistributable",
+     "https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files"),
     ("PyInstaller (bootloader)", "6.22", "GPL v2 com exceção para programas gerados",
      "https://pyinstaller.org/"),
     ("Inno Setup (instalador)", "6", "Licença Inno Setup (gratuita)", "https://jrsoftware.org/isinfo.php"),
@@ -36,6 +38,22 @@ BIBLIOTECAS = [
 
 # (versão, data, [o que mudou]) - a mais nova primeiro.
 NOTAS_DA_VERSAO = [
+    ("1.4.2", "novembro de 2026", [
+        "Corrigido: no programa instalado, o \"Imprimir teste\" dizia que faltavam bibliotecas de "
+        "impressão. Elas agora vão dentro do programa (inclusive a DLL que alguns Windows não têm).",
+        "Se a impressão tiver um problema, a mensagem pede para reinstalar ou falar com o suporte, e o "
+        "detalhe técnico fica no arquivo logs\\impressao.log (na pasta de dados).",
+        "Novo modo de impressão \"ESC/POS direto (RAW)\" para impressoras térmicas (Tomate, Elgin, "
+        "Bematech, Epson, Knup e as genéricas POS-58/POS-80), além do modo \"Pelo driver do Windows\".",
+        "No modo ESC/POS: corte automático do papel, opção de abrir a gaveta de dinheiro ao finalizar, "
+        "negrito e letra grande (nome da loja e TOTAL), escolha da tabela de acentos e logo em preto e branco "
+        "(dá para desligar).",
+        "Letras por linha: automático pelo papel (58 mm = 32, 80 mm = 48) ou ajustado à mão.",
+        "Botão \"Detectar\" em Configurar notinhas: imprime uma página de teste em cada modo e escolhe o "
+        "que funcionou.",
+        "Se o modo escolhido falhar, a mensagem sugere o outro modo.",
+        "Resumo de fechamento na mesma térmica de 58 mm: sai com 32 letras por linha.",
+    ]),
     ("1.4.1", "novembro de 2026", [
         "Instalador com o visual da tela de abertura: fundo escuro em degradê vinho, logo grande, "
         "\"EasyServ\" com a versão em rosa e os direitos no rodapé.",

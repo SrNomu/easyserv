@@ -7,8 +7,8 @@ Existem dois modelos independentes: "loja" e "cliente". Cada modelo guarda:
   - quais informações aparecem (data/hora, número, cliente...);
   - tamanho da fonte, alinhamento e largura do papel.
 
-Além dos modelos, há as opções de impressão (qual impressora usar),
-que valem para as duas notas.
+Além dos modelos, há as opções de impressão (qual impressora, o modo - pelo driver do
+Windows ou ESC/POS direto -, caracteres por linha, corte, gaveta...), que valem para as duas notas.
 
 A tela que edita tudo isso fica em tela_notinhas.py.
 
@@ -25,6 +25,7 @@ import shutil
 from datetime import datetime
 
 import config
+import impressao
 from config import ErroConfig, pasta_base
 
 ARQUIVO_LAYOUT = os.path.join(pasta_base(), "layout_notas.json")
@@ -68,6 +69,9 @@ DADOS_DA_LOJA = {"nome_loja": "nome", "endereco": "endereco", "telefone": "telef
 MOSTRAR_CABECALHO = {"nome_loja": "loja_nome", "endereco": "loja_endereco", "telefone": "loja_telefone",
                      "cnpj": "loja_cnpj"}
 
+# "Caracteres por linha" ajustável nos modos de texto (0 = automático, pelo papel).
+COLUNAS_MIN, COLUNAS_MAX = 24, 64
+
 FONTE_MIN, FONTE_MAX = 6, 16
 LOGO_MIN, LOGO_MAX = 20, 100
 
@@ -110,6 +114,14 @@ def impressao_padrao():
     return {
         "impressora": "",        # vazio = impressora padrão do Windows
         "tirar_acentos": False,  # para impressoras de texto que imprimem acentos errado
+        "modo": impressao.MODO_WINDOWS,  # "windows" (pelo driver) ou "escpos" (ESC/POS direto)
+        "colunas": 0,            # caracteres por linha nos modos de texto (0 = pelo papel: 32 ou 48)
+        # Só no modo ESC/POS:
+        "pagina_codigo": "cp850",  # tabela de acentos da impressora (ver impressao.PAGINAS_CODIGO)
+        "cortar_papel": True,    # corta no fim (impressora sem guilhotina ignora)
+        "abrir_gaveta": False,   # abre a gaveta de dinheiro ao finalizar o atendimento
+        "logo_escpos": True,     # logo em preto e branco (imagem raster)
+        "letra_grande": True,    # nome da loja e TOTAL com o dobro da altura
     }
 
 
@@ -154,6 +166,18 @@ def _validar_modelo(modelo):
     return modelo
 
 
+def _validar_impressao(opcoes):
+    """Corrige as opções de impressão fora do permitido."""
+    padrao = impressao_padrao()
+    if opcoes["modo"] not in impressao.MODOS:
+        opcoes["modo"] = padrao["modo"]
+    if opcoes["pagina_codigo"] not in impressao.PAGINAS_CODIGO:
+        opcoes["pagina_codigo"] = padrao["pagina_codigo"]
+    if opcoes["colunas"] != 0:
+        opcoes["colunas"] = min(max(opcoes["colunas"], COLUNAS_MIN), COLUNAS_MAX)
+    return opcoes
+
+
 def dados_da_loja():
     """Os dados da loja do config.json (de fábrica se o config.json estiver com problema)."""
     try:
@@ -192,6 +216,7 @@ def carregar_layout(loja=None):
     layout = _completar(dados, layout_padrao())
     for chave in MODELOS:
         _validar_modelo(layout[chave])
+    _validar_impressao(layout["impressao"])
     versao = dados.get("versao", 1) if isinstance(dados, dict) else 1
     if not isinstance(versao, int) or versao < 2:
         # Arquivo de antes da versão 2: tira os dados do cliente da nota da loja (uma vez só).

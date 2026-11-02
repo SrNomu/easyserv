@@ -36,7 +36,6 @@ import impressao
 import notas
 import treino
 from config import FORMAS_PAGAMENTO, pasta_base
-from layout_notas import COLUNAS_TEXTO, PAPEIS
 from utils import arredondar, formatar_reais
 
 PASTA_RELATORIOS = os.path.join(pasta_base(), "relatorios")
@@ -255,10 +254,10 @@ def linhas_resumo(relatorio, nome_loja, colunas):
     return linhas
 
 
-def modelo_resumo(layout):
-    """O modelo da nota da loja (fonte, alinhamento, logo), sempre em papel 80mm."""
+def modelo_resumo(layout, papel="80mm"):
+    """O modelo da nota da loja (fonte, alinhamento, logo), no papel do resumo (80mm)."""
     modelo = copy.deepcopy(layout["loja"])
-    modelo["papel"] = "80mm"
+    modelo["papel"] = papel
     return modelo
 
 
@@ -287,17 +286,30 @@ def imprimir_teste_resumo(layout, nome_loja, impressora=""):
 
 
 def _imprimir_80mm(layout, impressora, gerar_linhas, nome_documento):
-    """Imprime em papel 80mm: texto puro ou imagem, conforme o tipo da impressora."""
+    """
+    Imprime o resumo: papel 80mm, texto puro ou imagem, conforme o tipo da impressora.
+    Se for a MESMA impressora das notinhas, segue o que está em Configurar notinhas:
+    o modo (ESC/POS direto ou driver do Windows), os caracteres por linha e o papel de
+    58mm (a impressora de 58mm não tem largura para as 48 letras do papel de 80mm).
+    """
     opcoes = layout["impressao"]
-    impressora = impressora or impressao.escolher_impressora(opcoes["impressora"])
-    if impressao.eh_impressora_texto(impressora):
-        texto = notas.texto_da_nota(gerar_linhas(COLUNAS_TEXTO["80mm"]))
-        impressao.imprimir_texto(impressora, texto, opcoes["tirar_acentos"], nome_documento)
-    else:
-        modelo = modelo_resumo(layout)
-        _, _, colunas = notas.medidas(modelo)
-        imagem = notas.renderizar_imagem(modelo, gerar_linhas(colunas))
-        impressao.imprimir_imagem(impressora, imagem, PAPEIS["80mm"], nome_documento)
+    try:
+        das_notinhas = impressao.escolher_impressora(opcoes["impressora"])
+    except impressao.ErroImpressao:
+        if not impressora:
+            raise
+        das_notinhas = ""  # (sem impressora padrão no Windows, mas o resumo tem a dele)
+    impressora = impressora or das_notinhas
+    mesma = impressora == das_notinhas
+    papel = "58mm" if mesma and layout["loja"]["papel"] == "58mm" else "80mm"
+    modelo = modelo_resumo(layout, papel)
+    if not mesma:
+        # Outra impressora: o modo e a largura de Configurar notinhas não valem para ela.
+        layout = {**layout, "impressao": {**opcoes, "modo": impressao.MODO_WINDOWS, "colunas": 0}}
+
+    def linhas(modo_texto):
+        return gerar_linhas(notas.colunas_texto(layout, modelo) if modo_texto else notas.medidas(modelo)[2])
+    notas.imprimir_linhas(layout, impressora, modelo, linhas, nome_documento)
     return impressora
 
 

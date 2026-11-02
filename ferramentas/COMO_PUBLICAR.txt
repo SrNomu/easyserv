@@ -26,13 +26,18 @@ PARTE 2 - A cada versão nova: gerar o instalador
 3. Abra o terminal na pasta do projeto e rode:
        python ferramentas\gerar_instalador.py
    (ou dê dois cliques em gerar_instalador.bat)
-   Ele faz tudo sozinho: ícones, programa, atualizador, lista de arquivos,
-   instalador (Inno Setup) e o código SHA-256. Demora uns 3 a 5 minutos.
+   Ele faz tudo sozinho: ícones, programa, atualizador, o teste do .exe
+   gerado (testes\teste_exe.py: o módulo de impressão carrega dentro do
+   programa?), lista de arquivos, instalador (Inno Setup) e o código SHA-256.
+   Se o teste do .exe falhar, ele para e não gera o instalador.
+   Demora uns 3 a 5 minutos.
 4. No fim aparecem os dois arquivos que vão para o GitHub:
        dist\EasyServ_Setup_1.3.exe
        dist\EasyServ_Setup_1.3.exe.sha256
 5. Teste o instalador no seu computador antes de publicar (instale por cima
-   da versão anterior e confira se os dados continuam lá).
+   da versão anterior e confira se os dados continuam lá). Depois rode o teste
+   no programa INSTALADO:
+       python testes\teste_exe.py "%LOCALAPPDATA%\Programs\EasyServ\EasyServ.exe"
 
 Precisa ter instalado (só uma vez): Python com as bibliotecas do
 requirements.txt (python -m pip install -r requirements.txt) e o

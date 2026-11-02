@@ -1867,15 +1867,25 @@ class JanelaPrincipal(QMainWindow):
         except OSError as erro:
             avisos.append(f"ATENÇÃO: a nota da loja não pôde ser gerada:\n{erro}")
 
+        # Modo ESC/POS com "Abrir a gaveta": a gaveta abre junto com a nota do cliente
+        # (ou sozinha, se a nota não for impressa).
+        gaveta = notas.abre_gaveta(self.layout_das_notas)
         if self.check_nota_cliente.isChecked():
             try:
                 if guardar == "sempre":  # (senão a nota do cliente só é impressa, não fica salva)
                     notas.gerar_nota(self.layout_das_notas, numero, atendimento, self.carrinho, "cliente",
                                      modo_texto)
-                notas.imprimir_nota(self.layout_das_notas, numero, atendimento, self.carrinho, "cliente")
+                notas.imprimir_nota(self.layout_das_notas, numero, atendimento, self.carrinho, "cliente",
+                                    gaveta=gaveta)
+                gaveta = False  # (já abriu junto com a nota)
                 avisos.append("Nota do cliente enviada para a impressora.")
             except (OSError, impressao.ErroImpressao) as erro:
                 avisos.append(f"ATENÇÃO: a nota do cliente não foi impressa:\n{erro}")
+        if gaveta:
+            try:
+                notas.abrir_gaveta(self.layout_das_notas)
+            except impressao.ErroImpressao as erro:
+                avisos.append(f"ATENÇÃO: {erro}")
 
         mensagem = f"Atendimento nº {numero:06d} finalizado!\n\nTotal: {formatar_reais(total)}\n"
         if repasse:
