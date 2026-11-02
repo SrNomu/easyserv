@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import backup
 import impressao
 import notas
 import relatorio as rel
@@ -500,10 +501,23 @@ class TelaRelatorio(QDialog):
                     feito.append(f"Salvo: {caminho}")
         if dialogo.check_imprimir.isChecked() and self.imprimir(perguntar=False):
             feito.append("Resumo enviado para a impressora.")
+        if self._backup_ao_fechar():
+            # Preferências › Backup: "Fazer backup automático ao fechar o expediente"
+            try:
+                feito.append(f"Backup: {backup.fazer_backup()}")
+            except backup.ErroBackup as erro:
+                feito.append(f"O backup NÃO foi feito: {erro}")
         texto = "\n".join(feito) if feito else "Nada foi salvo nem impresso."
         QMessageBox.information(self, "Expediente fechado",
                                 f"Expediente de {self.relatorio.dia.strftime('%d/%m/%Y')} fechado.\n\n"
                                 f"Total do dia: {formatar_reais(self.relatorio.total)}\n\n{texto}")
+
+
+    def _backup_ao_fechar(self):
+        """Backup automático ligado? (nunca no modo treinamento: lá nada é de verdade)"""
+        cfg = getattr(self.pai, "config", None)
+        opcoes = getattr(cfg, "backup", None) or {}
+        return bool(opcoes.get("ao_fechar_expediente")) and not treino.ativo()
 
 
 class DialogoFechamento(QDialog):
@@ -544,6 +558,11 @@ class DialogoFechamento(QDialog):
         pasta = _rotulo(f"Os arquivos vão para a pasta: {rel.pasta_relatorios()}", "rotulo")
         pasta.setWordWrap(True)  # o caminho é comprido: quebra a linha em vez de alargar a janela
         grade.addWidget(pasta, 4, 0)
+        if hasattr(pai, "_backup_ao_fechar") and pai._backup_ao_fechar():
+            self.lbl_backup = _rotulo("Backup automático ligado: um backup completo (.zip) vai para "
+                                      f"{backup.pasta_escolhida()}", "rotulo")
+            self.lbl_backup.setWordWrap(True)
+            grade.addWidget(self.lbl_backup, 5, 0)
         coluna.addLayout(grade)
 
         botoes = QHBoxLayout()

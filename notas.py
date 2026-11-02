@@ -98,15 +98,17 @@ def montar_linhas(modelo, numero, atendimento, itens, via, modo_texto=False):
     def separador(caractere="-"):
         linhas.append((caractere * colunas, False))
 
-    # --- Cabeçalho ---
-    if modelo["nome_loja"].strip():
-        texto(modelo["nome_loja"].strip(), negrito=True, alinhado=True)
-    if modelo["endereco"].strip():
-        texto(modelo["endereco"].strip(), alinhado=True)
-    if modelo["telefone"].strip():
-        texto(f"Tel.: {modelo['telefone'].strip()}", alinhado=True)
-    if modelo["cnpj"].strip():
-        texto(f"CNPJ: {modelo['cnpj'].strip()}", alinhado=True)
+    # --- Cabeçalho (dados da loja, cada um se estiver marcado para aparecer) ---
+    def da_loja(chave, caixa):
+        return modelo.get(chave, "").strip() if mostrar.get(caixa, True) else ""
+    if da_loja("nome_loja", "loja_nome"):
+        texto(da_loja("nome_loja", "loja_nome"), negrito=True, alinhado=True)
+    if da_loja("endereco", "loja_endereco"):
+        texto(da_loja("endereco", "loja_endereco"), alinhado=True)
+    if da_loja("telefone", "loja_telefone"):
+        texto(f"Tel.: {da_loja('telefone', 'loja_telefone')}", alinhado=True)
+    if da_loja("cnpj", "loja_cnpj"):
+        texto(f"CNPJ: {da_loja('cnpj', 'loja_cnpj')}", alinhado=True)
     separador("=")
     if treino.ativo():
         texto(f"*** {treino.MARCA} ***", negrito=True, alinhado=True)

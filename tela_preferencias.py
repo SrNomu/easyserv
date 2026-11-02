@@ -2,25 +2,29 @@
 tela_preferencias.py - Tela "Preferências" (menu Arquivo › Preferências...).
 
 Junta as configurações gerais do programa, em abas:
+  Loja        -> nome, endereço, telefone, CNPJ e logo (valem para o programa inteiro);
   Atendimento -> "Pedir o valor do boleto/recarga" e "Mostrar repasses no relatório";
   Privacidade -> "Guardar dados do cliente" (nome e telefone):
        - Não guardar: servem só para imprimir a nota do cliente na hora;
        - Apagar automaticamente depois de X dias (padrão: 30): o apagamento roda
          quando o programa abre e apaga só o nome e o telefone;
        - Guardar sempre.
-  Aparência   -> modo de cor (claro, escuro ou seguir o Windows) e modo tablet.
+  Aparência   -> modo de cor (claro, escuro ou seguir o Windows) e modo tablet;
+  Backup      -> a pasta dos backups e o backup automático ao fechar o expediente.
 
-As opções de Atendimento e Privacidade ficam no config.json ("atendimento" e
-"dados_cliente"; o resto do arquivo não muda). As de Aparência ficam nas
+As opções de Loja, Atendimento, Privacidade e Backup ficam no config.json ("loja",
+"atendimento", "dados_cliente" e "backup"; o resto do arquivo não muda). As de Aparência ficam nas
 preferências da tela (preferencias.json), como no menu Exibir.
 """
 
 import json
+import os
 
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -32,9 +36,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import backup
 import banco
 import config
 import estilo
+from tela_loja import FormularioLoja
 
 
 def _rotulo(texto="", nome=None):
@@ -74,9 +80,11 @@ class TelaPreferencias(QDialog):
         coluna.setContentsMargins(16, 12, 16, 16)
         coluna.setSpacing(12)
         self.abas = QTabWidget()
+        self.abas.addTab(self._aba_loja(), "Loja")
         self.abas.addTab(self._aba_atendimento(), "Atendimento")
         self.abas.addTab(self._aba_privacidade(), "Privacidade")
         self.abas.addTab(self._aba_aparencia(), "Aparência")
+        self.abas.addTab(self._aba_backup(), "Backup")
         coluna.addWidget(self.abas, 1)
 
         botoes = QHBoxLayout()
@@ -97,6 +105,17 @@ class TelaPreferencias(QDialog):
     # ------------------------------------------------------------------
     # Abas
     # ------------------------------------------------------------------
+
+    def _aba_loja(self):
+        pagina, coluna = _aba()
+        coluna.addWidget(_rotulo("Dados da loja", "grupo"))
+        coluna.addWidget(_rotulo("Aparecem no título da janela, nas notinhas, no relatório (tela, A4, PDF e "
+                                 "Excel), no resumo de fechamento e nas páginas de teste de impressão.", "rotulo"))
+        coluna.addSpacing(4)
+        self.formulario_loja = FormularioLoja(self.config.loja)
+        coluna.addWidget(self.formulario_loja)
+        coluna.addStretch(1)
+        return pagina
 
     def _aba_atendimento(self):
         pagina, coluna = _aba()
@@ -188,6 +207,47 @@ class TelaPreferencias(QDialog):
         coluna.addStretch(1)
         return pagina
 
+    def _aba_backup(self):
+        pagina, coluna = _aba()
+        atual = self.config.backup
+        coluna.addWidget(_rotulo("Pasta dos backups", "grupo"))
+        self._pasta_backup = atual["pasta"]
+        self.lbl_pasta_backup = _rotulo("", None)
+        coluna.addWidget(self.lbl_pasta_backup)
+        linha = QHBoxLayout()
+        self.btn_pasta_backup = QPushButton("Escolher pasta...")
+        self.btn_pasta_backup.clicked.connect(self.escolher_pasta_backup)
+        linha.addWidget(self.btn_pasta_backup)
+        self.btn_pasta_padrao = QPushButton("Usar a pasta padrão")
+        self.btn_pasta_padrao.clicked.connect(lambda: self._definir_pasta_backup(""))
+        linha.addWidget(self.btn_pasta_padrao)
+        linha.addStretch(1)
+        coluna.addLayout(linha)
+        coluna.addWidget(_rotulo("Dica: escolha um pendrive ou uma pasta do Google Drive ou do OneDrive, para "
+                                 "os dados não ficarem só neste computador.", "rotulo"))
+        coluna.addSpacing(8)
+        self.check_backup_fechar = QCheckBox("Fazer backup automático ao fechar o expediente")
+        self.check_backup_fechar.setChecked(atual["ao_fechar_expediente"])
+        coluna.addWidget(self.check_backup_fechar)
+        coluna.addWidget(_explicacao("Em Relatório do dia › Fechar expediente, o programa salva um backup "
+                                     "completo (.zip) nesta pasta, além do PDF e do Excel."))
+        for botao in (self.btn_pasta_backup, self.btn_pasta_padrao):
+            botao.setAutoDefault(False)
+        coluna.addStretch(1)
+        self._definir_pasta_backup(self._pasta_backup)
+        return pagina
+
+    def _definir_pasta_backup(self, pasta):
+        self._pasta_backup = pasta
+        self.lbl_pasta_backup.setText(pasta or f"{backup.pasta_padrao()}  (padrão)")
+        self.btn_pasta_padrao.setEnabled(bool(pasta))
+
+    def escolher_pasta_backup(self):
+        pasta = QFileDialog.getExistingDirectory(self, "Pasta dos backups",
+                                                 self._pasta_backup or backup.pasta_padrao())
+        if pasta:
+            self._definir_pasta_backup(os.path.normpath(pasta))
+
     # ------------------------------------------------------------------
 
     def escolha(self):
@@ -206,10 +266,21 @@ class TelaPreferencias(QDialog):
             else "Apagar agora os que já passaram do prazo (sem esperar o programa abrir de novo)")
 
     def salvar(self):
+        erro_loja = self.formulario_loja.erro()
+        if erro_loja:
+            self.abas.setCurrentIndex(0)
+            QMessageBox.warning(self, "Preferências", erro_loja)
+            self.formulario_loja.campo_nome.setFocus()
+            return
         escolha, dias = self.escolha(), self.campo_dias.value()
         try:
             with open(config.ARQUIVO_CONFIG, "r", encoding="utf-8") as arquivo:
                 dados = json.load(arquivo)
+            dados["loja"] = config.conferir_loja(self.formulario_loja.valores())
+            dados["nome_loja"] = dados["loja"]["nome"]
+            dados["loja_confirmada"] = True
+            dados["backup"] = {"pasta": self._pasta_backup,
+                               "ao_fechar_expediente": self.check_backup_fechar.isChecked()}
             dados["dados_cliente"] = {"guardar": escolha, "dias": dias}
             dados["atendimento"] = {"pedir_valor_terceiros": self.check_pedir_valor.isChecked(),
                                     "mostrar_repasses": self.check_repasses.isChecked()}

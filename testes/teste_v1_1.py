@@ -100,11 +100,11 @@ ok(not j.layout_das_notas["loja"]["mostrar"]["cliente_nome"], "layout carregado:
 # migração de layout antigo (versão 1, com cliente marcado na loja)
 antigo = layout_notas.layout_padrao(); antigo.pop("versao")
 antigo["loja"]["mostrar"]["cliente_nome"] = antigo["loja"]["mostrar"]["telefone"] = True
-antigo["cliente"]["endereco"] = "Rua X, 1"
+antigo["cliente"]["rodape"] = "Volte sempre X"
 json.dump(antigo, open(layout_notas.ARQUIVO_LAYOUT, "w", encoding="utf-8"))
 migrado = layout_notas.carregar_layout()
 ok(not migrado["loja"]["mostrar"]["cliente_nome"] and not migrado["loja"]["mostrar"]["telefone"]
-   and migrado["cliente"]["endereco"] == "Rua X, 1", "layout antigo: desmarca cliente na loja e mantém o resto")
+   and migrado["cliente"]["rodape"] == "Volte sempre X", "layout antigo: desmarca cliente na loja e mantém o resto")
 ok(ler_json(layout_notas.ARQUIVO_LAYOUT).get("versao") == layout_notas.VERSAO_LAYOUT_NOTAS, "migração gravada uma vez só")
 j.layout_das_notas = migrado
 

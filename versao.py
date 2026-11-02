@@ -10,7 +10,7 @@ Ao lançar uma versão nova:
 """
 
 NOME_PROGRAMA = "EasyServ"
-VERSAO = "1.3.1"
+VERSAO = "1.4"
 AUTOR = "Pedro"
 ANO = "2026"
 COPYRIGHT = f"© {ANO} {AUTOR}. Todos os direitos reservados."
@@ -36,6 +36,24 @@ BIBLIOTECAS = [
 
 # (versão, data, [o que mudou]) - a mais nova primeiro.
 NOTAS_DA_VERSAO = [
+    ("1.4", "novembro de 2026", [
+        "Dados da loja num lugar só: na primeira vez que o programa abre aparece a janela \"Dados da sua "
+        "loja\" (nome, endereço, telefone, CNPJ e logo). Depois eles ficam em Arquivo › Preferências › Loja "
+        "e valem para o título da janela, as notinhas, o relatório (tela, A4, PDF e Excel), o resumo de "
+        "fechamento e as páginas de teste. Quem já usa só confirma o nome que já estava configurado.",
+        "Configurar notinhas: o cabeçalho agora só tem as caixas de mostrar ou esconder cada dado da loja "
+        "e o link \"Alterar dados da loja\".",
+        "Backup (Arquivo › Backup): \"Fazer backup agora\" salva o banco e as configurações num .zip com "
+        "data e hora; dá para escolher a pasta (ex.: pendrive ou Google Drive) e restaurar um backup "
+        "(o estado atual é guardado antes). Opção de backup automático ao fechar o expediente "
+        "(Preferências › Backup).",
+        "Limpar dados: um texto explica que é preciso digitar LIMPAR para liberar o botão.",
+        "Procurar atualizações: mensagens separadas para \"Você já está com a versão mais nova\" e "
+        "\"Não foi possível consultar as atualizações (sem internet?)\".",
+        "Layout Touch e modo tablet não ficam mais cortados à direita em telas de 1440 px ou menores: "
+        "quando as quatro colunas não cabem, o teclado vai para baixo do \"Adicionar item\" e o Cliente "
+        "fica em aba junto do Pagamento.",
+    ]),
     ("1.3.1", "novembro de 2026", [
         "Código-fonte publicado no GitHub (github.com/SrNomu/easyserv) como portfólio.",
         "O EasyServ passa a procurar atualizações nesse repositório ao abrir.",

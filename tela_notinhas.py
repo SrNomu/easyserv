@@ -8,9 +8,14 @@ tela_notinhas.py - Tela "Configurar notinhas" (editor do layout das notas), em P
   └ [Restaurar padrão] [Imprimir teste]                [Salvar] [Fechar] ┘
 
 As mudanças ficam só na memória até clicar em "Salvar".
+
+Os dados da loja (nome, endereço, telefone, CNPJ e logo) NÃO são editados aqui: aqui só
+se escolhe se cada um aparece na nota. Eles ficam em Preferências › Loja (o link
+"Alterar dados da loja" abre a mesma janela).
 """
 
 import json
+import os
 from datetime import datetime
 from decimal import Decimal
 
@@ -22,13 +27,11 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QFileDialog,
     QFormLayout,
     QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -40,9 +43,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import config
 import impressao
 import layout_notas
 import notas
+import tela_loja
 from utils import arredondar, base_da_taxa
 
 TEXTO_IMPRESSORA_PADRAO = "(impressora padrão do Windows)"
@@ -160,38 +165,30 @@ class TelaNotinhas(QDialog):
         coluna = QVBoxLayout(coluna_widget)
         coluna.setContentsMargins(0, 0, 4, 0)
 
-        # --- Cabeçalho ---
-        caixa = QGroupBox("Cabeçalho")
-        formulario = QFormLayout(caixa)
-        self.campo_nome = QLineEdit()
-        self.campo_endereco = QLineEdit()
-        self.campo_telefone = QLineEdit()
-        self.campo_cnpj = QLineEdit()
-        formulario.addRow("Nome da loja", self.campo_nome)
-        formulario.addRow("Endereço", self.campo_endereco)
-        formulario.addRow("Telefone", self.campo_telefone)
-        formulario.addRow("CNPJ", self.campo_cnpj)
-        dica = QLabel("Deixe vazio o que não quiser na nota.")
-        dica.setObjectName("rotulo")
-        formulario.addRow(dica)
+        # --- Cabeçalho: só mostrar ou esconder (os dados vêm de Preferências › Loja) ---
+        caixa = QGroupBox("Cabeçalho (dados da loja)")
+        layout_cabecalho = QVBoxLayout(caixa)
+        self.checks_cabecalho = {}
+        for chave, rotulo in layout_notas.CAMPOS_CABECALHO:
+            check = QCheckBox(rotulo)
+            self.checks_cabecalho[chave] = check
+            layout_cabecalho.addWidget(check)
+        self.lbl_link_loja = QLabel('<a href="#">Alterar dados da loja</a>')
+        self.lbl_link_loja.setTextFormat(Qt.RichText)
+        self.lbl_link_loja.setCursor(Qt.PointingHandCursor)
+        self.lbl_link_loja.linkActivated.connect(lambda _link: self.alterar_dados_da_loja())
+        layout_cabecalho.addWidget(self.lbl_link_loja)
         coluna.addWidget(caixa)
 
-        # --- Logo ---
+        # --- Logo (a imagem também é dos dados da loja; aqui só se aparece e o tamanho) ---
         caixa = QGroupBox("Logo")
         layout_logo = QVBoxLayout(caixa)
         self.check_logo = QCheckBox("Mostrar logo na nota")
         layout_logo.addWidget(self.check_logo)
-        linha = QHBoxLayout()
-        self.campo_logo = QLineEdit()
-        self.campo_logo.setReadOnly(True)
-        linha.addWidget(self.campo_logo, 1)
-        botao = QPushButton("Escolher...")
-        botao.clicked.connect(self.escolher_logo)
-        linha.addWidget(botao)
-        botao = QPushButton("Remover")
-        botao.clicked.connect(self.remover_logo)
-        linha.addWidget(botao)
-        layout_logo.addLayout(linha)
+        self.lbl_logo = QLabel()
+        self.lbl_logo.setObjectName("rotulo")
+        self.lbl_logo.setWordWrap(True)
+        layout_logo.addWidget(self.lbl_logo)
         linha = QHBoxLayout()
         linha.addWidget(QLabel("Tamanho"))
         self.slider_logo = QSlider(Qt.Horizontal)
@@ -312,8 +309,8 @@ class TelaNotinhas(QDialog):
 
     def _ligar_sinais(self):
         """Qualquer mudança nas opções -> guarda no layout e atualiza a pré-visualização."""
-        for campo in (self.campo_nome, self.campo_endereco, self.campo_telefone, self.campo_cnpj, self.campo_logo):
-            campo.textChanged.connect(self._alterou)
+        for check in self.checks_cabecalho.values():
+            check.toggled.connect(self._alterou)
         self.campo_rodape.textChanged.connect(self._alterou)
         self.check_logo.toggled.connect(self._alterou)
         self.slider_logo.valueChanged.connect(self._alterou)
@@ -335,12 +332,9 @@ class TelaNotinhas(QDialog):
         """Preenche os campos com o modelo atual (loja ou cliente)."""
         modelo = self.dados[self.chave_modelo]
         self._carregando = True
-        self.campo_nome.setText(modelo["nome_loja"])
-        self.campo_endereco.setText(modelo["endereco"])
-        self.campo_telefone.setText(modelo["telefone"])
-        self.campo_cnpj.setText(modelo["cnpj"])
+        for chave, check in self.checks_cabecalho.items():
+            check.setChecked(modelo["mostrar"].get(chave, True))
         self.check_logo.setChecked(modelo["mostrar_logo"])
-        self.campo_logo.setText(modelo["logo"])
         self.slider_logo.setValue(modelo["tamanho_logo"])
         for chave, check in self.checks_mostrar.items():
             check.setChecked(modelo["mostrar"][chave])
@@ -353,7 +347,19 @@ class TelaNotinhas(QDialog):
         outro = "cliente" if self.chave_modelo == "loja" else "loja"
         self.btn_copiar.setText(f"Copiar estas opções para a {layout_notas.MODELOS[outro]}")
         self.lbl_tamanho_logo.setText(f"{modelo['tamanho_logo']}%")
+        self._mostrar_dados_da_loja()
         self._agendar_previa()
+
+    def _mostrar_dados_da_loja(self):
+        """Ao lado de cada caixa, o que a loja tem (vazio = não aparece mesmo marcado)."""
+        modelo = self.dados[self.chave_modelo]
+        for chave, rotulo in layout_notas.CAMPOS_CABECALHO:
+            chave_modelo = next(c for c, caixa in layout_notas.MOSTRAR_CABECALHO.items() if caixa == chave)
+            valor = modelo.get(chave_modelo, "").strip()
+            self.checks_cabecalho[chave].setText(f"{rotulo}: {valor}" if valor else f"{rotulo} (não preenchido)")
+        logo = modelo.get("logo", "")
+        self.lbl_logo.setText(f"Imagem: {os.path.basename(logo)}" if logo else
+                              "Nenhuma imagem: escolha em Alterar dados da loja.")
 
     def _carregar_impressao(self):
         opcoes = self.dados["impressao"]
@@ -369,15 +375,11 @@ class TelaNotinhas(QDialog):
     def _ler_tela(self):
         """Copia o que está na tela para o layout (na memória)."""
         modelo = self.dados[self.chave_modelo]
-        modelo["nome_loja"] = self.campo_nome.text()
-        modelo["endereco"] = self.campo_endereco.text()
-        modelo["telefone"] = self.campo_telefone.text()
-        modelo["cnpj"] = self.campo_cnpj.text()
         modelo["rodape"] = self.campo_rodape.toPlainText()
         modelo["mostrar_logo"] = self.check_logo.isChecked()
-        modelo["logo"] = self.campo_logo.text()
         modelo["tamanho_logo"] = self.slider_logo.value()
-        modelo["mostrar"] = {chave: check.isChecked() for chave, check in self.checks_mostrar.items()}
+        modelo["mostrar"] = {chave: check.isChecked()
+                             for chave, check in {**self.checks_mostrar, **self.checks_cabecalho}.items()}
         modelo["tamanho_fonte"] = self.spin_fonte.value()
         modelo["alinhamento"] = "centro" if self.radio_centro.isChecked() else "esquerda"
         modelo["papel"] = next(papel for papel, radio in self.radios_papel.items() if radio.isChecked())
@@ -431,7 +433,12 @@ class TelaNotinhas(QDialog):
         self.lbl_impressora.setText(texto)
 
     def _como_texto(self):
-        return json.dumps(self.dados, sort_keys=True, ensure_ascii=False)
+        """O layout como texto, sem os dados da loja (eles se salvam sozinhos, em outro lugar)."""
+        dados = layout_notas.copiar(self.dados)
+        for chave in layout_notas.MODELOS:
+            for chave_modelo in layout_notas.DADOS_DA_LOJA:
+                dados[chave].pop(chave_modelo, None)
+        return json.dumps(dados, sort_keys=True, ensure_ascii=False)
 
     # ------------------------------------------------------------------
     # Pré-visualização
@@ -461,7 +468,7 @@ class TelaNotinhas(QDialog):
         _, _, colunas = notas.medidas(modelo, self._modo_texto)
         info = f"Papel {modelo['papel']}  ·  {colunas} caracteres por linha"
         if modelo["mostrar_logo"] and not self._modo_texto and not layout_notas.caminho_logo(modelo):
-            info += "  ·  Logo não encontrada: escolha a imagem de novo."
+            info += "  ·  Sem imagem da logo: escolha em Alterar dados da loja."
         self.lbl_info_previa.setText(info)
 
     def _dados_exemplo(self):
@@ -508,24 +515,19 @@ class TelaNotinhas(QDialog):
     # Botões
     # ------------------------------------------------------------------
 
-    def escolher_logo(self):
-        caminho, _filtro = QFileDialog.getOpenFileName(
-            self, "Escolher logo", "", "Imagens (*.png *.jpg *.jpeg *.bmp *.gif);;Todos os arquivos (*.*)")
-        if not caminho:
-            return  # a pessoa cancelou
-        try:
-            with Image.open(caminho) as imagem:
-                imagem.verify()  # confere se é mesmo uma imagem válida
-            relativo = layout_notas.guardar_logo(caminho, self.chave_modelo)
-        except OSError as erro:
-            QMessageBox.critical(self, "Logo", f"Não foi possível usar esta imagem:\n{erro}")
+    def alterar_dados_da_loja(self):
+        """O link "Alterar dados da loja": a mesma janela de Preferências › Loja."""
+        dialogo = tela_loja.DialogoDadosLoja(self)
+        if dialogo.exec() != QDialog.Accepted:
             return
-        self.campo_logo.setText(relativo)
-        self.check_logo.setChecked(True)
-
-    def remover_logo(self):
-        self.campo_logo.setText("")
-        self.check_logo.setChecked(False)
+        layout_notas.aplicar_loja(self.dados, config.carregar_config().loja)
+        if dialogo.formulario.valores()["logo"] and not self.dados[self.chave_modelo]["mostrar_logo"]:
+            self.check_logo.setChecked(True)  # acabou de escolher uma logo: já mostra
+        self._mostrar_dados_da_loja()
+        self._agendar_previa()
+        pai = self.parent()
+        if hasattr(pai, "loja_alterada"):
+            pai.loja_alterada()  # título da janela principal e notas já com os dados novos
 
     def copiar_para_outro(self):
         outro = "cliente" if self.chave_modelo == "loja" else "loja"
@@ -542,6 +544,7 @@ class TelaNotinhas(QDialog):
         resposta = QMessageBox.question(self, "Restaurar padrão", f"Voltar a {nome} para as opções de fábrica?")
         if resposta == QMessageBox.Yes:
             self.dados[self.chave_modelo] = layout_notas.modelo_padrao(self.chave_modelo)
+            layout_notas.aplicar_loja(self.dados, layout_notas.dados_da_loja())
             self._carregar_modelo()
             self.lbl_status.setText("Padrão restaurado (falta salvar).")
 

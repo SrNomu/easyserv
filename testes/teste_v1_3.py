@@ -78,12 +78,13 @@ textos_menu = [a.text() for m in j.menuBar().actions() for a in m.menu().actions
 ok("Preferências..." in textos_menu and "Configurações..." not in textos_menu, "Arquivo › Preferências (no lugar de Configurações)")
 t = tela_preferencias.TelaPreferencias(j, ao_salvar=lambda: j.recarregar_config("Preferências salvas."))
 t.show(); esperar(5)
-ok([t.abas.tabText(i) for i in range(t.abas.count())] == ["Atendimento", "Privacidade", "Aparência"], "abas Atendimento, Privacidade e Aparência")
+abas = [t.abas.tabText(i) for i in range(t.abas.count())]
+ok([a for a in abas if a in ("Atendimento", "Privacidade", "Aparência")] == ["Atendimento", "Privacidade", "Aparência"], f"abas Atendimento, Privacidade e Aparência ({abas})")
 ok(not t.check_pedir_valor.isChecked() and not t.check_repasses.isChecked(), "abre com as opções desligadas")
 ok(t.check_pedir_valor.text() == "Pedir o valor do boleto/recarga" and t.check_repasses.text() == "Mostrar repasses no relatório", "textos das opções")
 ok("Pagamento de boletos" in t.lbl_servicos_terceiros.text() and "Recarga RioCard" in t.lbl_servicos_terceiros.text(), "mostra para quais serviços vale")
-for i, nome in enumerate(("atendimento", "privacidade", "aparencia")):
-    t.abas.setCurrentIndex(i); esperar(2); t.grab().save(os.path.join(saida, f"preferencias_{nome}.png"))
+for nome, aba in (("atendimento", "Atendimento"), ("privacidade", "Privacidade"), ("aparencia", "Aparência")):
+    t.abas.setCurrentIndex(abas.index(aba)); esperar(2); t.grab().save(os.path.join(saida, f"preferencias_{nome}.png"))
 ok(t.escolha() == "apagar" and t.campo_dias.value() == 30, "Privacidade: guardar dados do cliente veio junto")
 ok(t.modo_cor() == "claro" and not t.check_tablet.isChecked(), "Aparência: modo de cor e tablet atuais")
 t.check_pedir_valor.setChecked(True); t.radios["apagar"].setChecked(True); t.campo_dias.setValue(15)

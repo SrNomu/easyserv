@@ -97,24 +97,43 @@ def ler_lancamento(dados):
     )
 
 
+# Resultado de verificar(): o que mostrar para a pessoa.
+NOVA = "nova"            # tem versão mais nova (vem junto o lançamento)
+ATUAL = "atual"          # consultou e esta já é a mais nova
+SEM_RESPOSTA = "erro"    # não deu para consultar (sem internet, GitHub fora do ar, resposta estranha)
+
+
+def verificar(repositorio=None, tempo_limite=5):
+    """
+    (situacao, lancamento): situacao é NOVA, ATUAL ou SEM_RESPOSTA; lancamento só vem com NOVA.
+    Nunca dá erro. Sem repositório configurado conta como SEM_RESPOSTA.
+    """
+    repositorio = versao.REPOSITORIO_GITHUB if repositorio is None else repositorio
+    if not repositorio or versao.numero(versao.VERSAO) == ():
+        return SEM_RESPOSTA, None
+    try:
+        dados = _ler_json(URL_API.format(repositorio=repositorio), tempo_limite)
+        if not isinstance(dados, dict):
+            return SEM_RESPOSTA, None
+        if dados.get("draft") or dados.get("prerelease"):
+            return ATUAL, None  # (o último publicado ainda é rascunho: para quem usa, nada novo)
+        lancamento = ler_lancamento(dados)
+    except Exception:
+        return SEM_RESPOSTA, None
+    if lancamento is None:
+        return SEM_RESPOSTA, None
+    if not eh_mais_nova(lancamento.versao):
+        return ATUAL, None
+    return NOVA, lancamento
+
+
 def consultar(repositorio=None, tempo_limite=5):
     """
     A última versão publicada, se for MAIS NOVA que esta; senão None.
     Nunca dá erro: sem internet, sem repositório ou resposta estranha -> None.
+    (Para saber se foi "já é a mais nova" ou "não deu para consultar", use verificar().)
     """
-    repositorio = versao.REPOSITORIO_GITHUB if repositorio is None else repositorio
-    if not repositorio or versao.numero(versao.VERSAO) == ():
-        return None
-    try:
-        dados = _ler_json(URL_API.format(repositorio=repositorio), tempo_limite)
-        if dados.get("draft") or dados.get("prerelease"):
-            return None
-        lancamento = ler_lancamento(dados)
-    except Exception:
-        return None
-    if lancamento is None or not eh_mais_nova(lancamento.versao):
-        return None
-    return lancamento
+    return verificar(repositorio, tempo_limite)[1]
 
 
 def sha256_publicado(lancamento, tempo_limite=15):

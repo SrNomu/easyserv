@@ -40,8 +40,8 @@ ok(migracao.encontrar_dados_antigos([so_antigo]) == [so_antigo], "acha dados ant
 ok("easyserv.db" in integridade.BANCOS and "maisbella.db" in integridade.BANCOS, "integridade confere os dois")
 
 print("--- versão e licença")
-ok(versao.VERSAO == "1.3.1" and versao.REPOSITORIO_GITHUB == "SrNomu/easyserv", "1.3.1 com o repositório")
-ok(versao.NOTAS_DA_VERSAO[0][0] == "1.3.1", "notas da 1.3.1 no topo")
+ok(versao.numero(versao.VERSAO) >= versao.numero("1.3.1") and versao.REPOSITORIO_GITHUB == "SrNomu/easyserv", "1.3.1 (ou mais nova) com o repositório")
+ok(any(v == "1.3.1" for v, _d, _n in versao.NOTAS_DA_VERSAO), "notas da 1.3.1 continuam na lista")
 lic = open("LICENCA.txt", encoding="utf-8").read()
 ok("Todos os direitos reservados" in lic and "visualização" in lic and "autorização" in lic, "LICENCA: código visível, direitos reservados")
 ok(atualizacao.ler_lancamento is not None, "ok")

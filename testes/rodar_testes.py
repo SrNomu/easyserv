@@ -23,7 +23,7 @@ import tempfile
 PASTA_TESTES = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(PASTA_TESTES)
 ORDEM = ["teste_interface", "teste_regras_de_negocio", "teste_relatorio", "teste_funcoes_gerais",
-         "teste_v1_0", "teste_v1_1", "teste_v1_2", "teste_v1_3", "teste_v1_3_1"]
+         "teste_v1_0", "teste_v1_1", "teste_v1_2", "teste_v1_3", "teste_v1_3_1", "teste_v1_4"]
 
 
 def copiar_programa(destino):

@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
     QApplication,
+    QBoxLayout,
     QButtonGroup,
     QCheckBox,
     QDockWidget,
@@ -60,6 +61,7 @@ from PySide6.QtWidgets import (
 
 import atalhos
 import atualizacao
+import backup
 import banco
 import config
 import estilo
@@ -76,6 +78,7 @@ from tela_atalhos import TelaAtalhos
 from tela_atualizacao import DialogoAtualizacao
 from tela_cores import TelaCores
 from tela_limpar import TelaLimpar
+from tela_loja import DialogoBoasVindas
 from tela_notinhas import TelaNotinhas
 from tela_preferencias import TelaPreferencias
 from tela_relatorio import TelaRelatorio
@@ -150,6 +153,42 @@ class AreaRolavel(QScrollArea):
         # quando os serviços são recarregados ou o estilo é aplicado.
         largura = self.widget().minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width()
         return QSize(largura, 90)
+
+
+class LinhaDeBotoes(QWidget):
+    """
+    Botões lado a lado (o primeiro à esquerda, o último à direita). Se o painel ficar
+    estreito demais para eles, ficam um embaixo do outro, em vez de alargar o painel
+    (e a janela passar da tela).
+    """
+
+    def __init__(self, botoes):
+        super().__init__()
+        self.botoes = botoes
+        self.caixa = QBoxLayout(QBoxLayout.LeftToRight, self)
+        self.caixa.setContentsMargins(0, 0, 0, 0)
+        for numero, botao in enumerate(botoes):
+            if numero:
+                self.caixa.addStretch(1)
+            self.caixa.addWidget(botao)
+
+    def _largura_lado_a_lado(self):
+        return sum(botao.sizeHint().width() for botao in self.botoes) + 24 * (len(self.botoes) - 1)
+
+    def minimumSizeHint(self):
+        # A largura mínima é a de um botão só (empilhados); a altura, a do jeito que está agora.
+        largura = max(botao.minimumSizeHint().width() for botao in self.botoes)
+        return QSize(largura, self.caixa.minimumSize().height())
+
+    def empilhados(self):
+        return self.caixa.direction() == QBoxLayout.TopToBottom
+
+    def resizeEvent(self, evento):
+        direcao = QBoxLayout.TopToBottom if self.width() < self._largura_lado_a_lado() else QBoxLayout.LeftToRight
+        if self.caixa.direction() != direcao:
+            self.caixa.setDirection(direcao)
+            self.updateGeometry()  # (a altura mudou: o painel arruma o resto)
+        super().resizeEvent(evento)
 
 
 class BotaoServico(QPushButton):
@@ -414,15 +453,13 @@ class JanelaPrincipal(QMainWindow):
         self.pilha_atendimento.addWidget(self.tabela)
         coluna.addWidget(self.pilha_atendimento, 1)
 
-        botoes = QHBoxLayout()
         self.btn_remover = QPushButton()
         self.btn_remover.clicked.connect(lambda: self.remover_item())
         self.btn_cancelar = QPushButton()
         self.btn_cancelar.clicked.connect(lambda: self.cancelar_atendimento())
-        botoes.addWidget(self.btn_remover)
-        botoes.addStretch(1)
-        botoes.addWidget(self.btn_cancelar)
-        coluna.addLayout(botoes)
+        # Lado a lado; se o painel ficar estreito (tela menor, letras grandes), um embaixo do outro.
+        self.botoes_atendimento = LinhaDeBotoes([self.btn_remover, self.btn_cancelar])
+        coluna.addWidget(self.botoes_atendimento)
         return cartao
 
     def _criar_conteudo_teclado(self):
@@ -482,6 +519,7 @@ class JanelaPrincipal(QMainWindow):
 
         coluna.addSpacing(8)
         self.lbl_rotulo_recebido = _rotulo("", "rotulo")
+        self.lbl_rotulo_recebido.setWordWrap(True)  # (quebra a linha em vez de alargar o painel)
         coluna.addWidget(self.lbl_rotulo_recebido)
         self.entry_recebido = QLineEdit()
         self.entry_recebido.textChanged.connect(lambda *_: self.atualizar_totais())
@@ -569,6 +607,12 @@ class JanelaPrincipal(QMainWindow):
         menu_arquivo.addAction("Abrir pasta de notas", self.abrir_pasta_notas)
         menu_arquivo.addAction("Abrir pasta de dados", self.abrir_pasta_dados)
         menu_arquivo.addAction("Importar dados de outra pasta...", self.importar_dados)
+        menu_backup = menu_arquivo.addMenu("Backup")
+        menu_backup.addAction("Fazer backup agora", self.fazer_backup_agora)
+        menu_backup.addAction("Escolher pasta do backup...", self.escolher_pasta_backup)
+        menu_backup.addAction("Abrir pasta do backup", self.abrir_pasta_backup)
+        menu_backup.addSeparator()
+        menu_backup.addAction("Restaurar backup...", self.restaurar_backup)
         menu_arquivo.addAction("Editar config.json (avançado)", self.editar_config)
         menu_arquivo.addAction("Recarregar configurações", lambda: self.recarregar_config())
         menu_arquivo.addSeparator()
@@ -1054,6 +1098,34 @@ class JanelaPrincipal(QMainWindow):
         p["teclado"].hide()
         p["pagamento"].raise_()  # a aba do Pagamento fica na frente
 
+    # As colunas do layout Touch (para saber se as quatro cabem na tela).
+    COLUNAS_TOUCH = (["servicos"], ["item", "atendimento"], ["teclado"], ["cliente", "pagamento", "totais"])
+    # (as do Touch de três colunas, para conferir que elas cabem)
+    COLUNAS_TOUCH_ESTREITO = (["servicos"], ["item", "teclado", "atendimento"], ["cliente", "pagamento", "totais"])
+
+    def _largura_minima(self, nomes):
+        """A largura que uma coluna de painéis precisa para nada ficar cortado."""
+        return max(self.paineis[nome].widget().minimumSizeHint().width() for nome in nomes) + 12
+
+    def _largura_disponivel(self):
+        """A largura da janela (a de antes de ligar o tablet), sem passar da tela onde ela está."""
+        largura = getattr(self, "_largura_alvo", None) or self.width()
+        tela = self.screen().availableGeometry().width() if self.screen() else largura
+        return min(largura, tela)
+
+    def _voltar_para_largura_alvo(self):
+        """
+        Com as letras maiores, o Qt alarga a janela antes de o layout novo ficar pronto.
+        Depois de pronto, ela volta para a largura de antes (se o layout novo couber nela).
+        """
+        alvo, self._largura_alvo = getattr(self, "_largura_alvo", None), None
+        if alvo and not (self.isMaximized() or self.isFullScreen()) and self.width() > alvo:
+            self.resize(max(alvo, self.minimumSizeHint().width()), self.height())
+
+    def _touch_em_tres_colunas(self):
+        """True se as quatro colunas do Touch não cabem (telas de 1440 px ou menos no modo tablet)."""
+        return sum(self._largura_minima(coluna) for coluna in self.COLUNAS_TOUCH) > self._largura_disponivel()
+
     def _organizar_layout_touch(self):
         """
         Layout "Touch": o teclado (com teclas grandes) ganha uma coluna inteira.
@@ -1062,11 +1134,29 @@ class JanelaPrincipal(QMainWindow):
           │ Serviços ├────────────────┤   Teclado   │ Pagamento │
           │          │ Atendimento    │   grande    │ Totais    │
           └──────────┴────────────────┴─────────────┴───────────┘
+        Se as quatro colunas não cabem na tela, o teclado vai para baixo do "Adicionar item"
+        e o Cliente fica em aba junto do Pagamento (F2 traz a aba para a frente):
+          ┌──────────┬────────────────┬─────────────────────┐
+          │          │ Adicionar item │ [Pagamento|Cliente] │
+          │ Serviços │ Teclado grande ├─────────────────────┤
+          │          │ Atendimento    │ Totais              │
+          └──────────┴────────────────┴─────────────────────┘
         """
         p = self.paineis
         self._soltar_paineis()
+        self._touch_estreito = self._touch_em_tres_colunas()
+        self.teclado.definir_grande(True, baixo=self._touch_estreito)
         self.addDockWidget(Qt.LeftDockWidgetArea, p["servicos"])
         self.splitDockWidget(p["servicos"], p["item"], Qt.Horizontal)
+        if self._touch_estreito:
+            self.splitDockWidget(p["item"], p["teclado"], Qt.Vertical)
+            self.splitDockWidget(p["teclado"], p["atendimento"], Qt.Vertical)
+            self.addDockWidget(Qt.RightDockWidgetArea, p["pagamento"])
+            self.splitDockWidget(p["pagamento"], p["totais"], Qt.Vertical)
+            self.tabifyDockWidget(p["pagamento"], p["cliente"])
+            self._mostrar_todos()
+            p["pagamento"].raise_()  # a aba do Pagamento fica na frente
+            return
         self.splitDockWidget(p["item"], p["teclado"], Qt.Horizontal)
         self.splitDockWidget(p["item"], p["atendimento"], Qt.Vertical)
         self.addDockWidget(Qt.RightDockWidgetArea, p["cliente"])
@@ -1074,21 +1164,30 @@ class JanelaPrincipal(QMainWindow):
         self.splitDockWidget(p["pagamento"], p["totais"], Qt.Vertical)
         self._mostrar_todos()
 
-    def _ajustar_tamanhos(self, colunas, direita):
+    def _ajustar_tamanhos(self, colunas, direita, meio=("item", "atendimento")):
         """
         Acerta os tamanhos depois de montar um layout.
         colunas = [(painel, fração da largura da janela), ...] da esquerda para a direita;
         direita = painéis da coluna da direita, de cima para baixo. Cada um fica com a
-                  altura que o conteúdo pede e o último fica com o que sobrar.
+                  altura que o conteúdo pede e o último fica com o que sobrar;
+        meio    = os painéis da coluna do meio, do mesmo jeito.
         """
         p = self.paineis
         largura = self.width()
+        # Cada coluna ganha primeiro o mínimo que precisa (nada cortado) e o que sobrar
+        # da janela é dividido conforme as frações. (Antes era só a fração, e numa
+        # janela estreita o teclado grande ficava mais estreito que as teclas.)
+        grupos = {"atendimento": list(meio), "pagamento": [*direita, "cliente"], "cliente": list(direita)}
+        minimos = [self._largura_minima(grupos.get(nome, [nome])) for nome, _ in colunas]
+        sobra = max(largura - sum(minimos), 0)
+        soma_fracoes = sum(fracao for _, fracao in colunas) or 1
         self.resizeDocks([p[nome] for nome, _ in colunas],
-                         [int(largura * fracao) for _, fracao in colunas], Qt.Horizontal)
+                         [int(minimo + sobra * fracao / soma_fracoes) for minimo, (_, fracao) in zip(minimos, colunas)],
+                         Qt.Horizontal)
         # Em cada coluna, os painéis de cima ficam com a altura certa e o de baixo
         # com o resto. O total é a altura que a coluna tem hoje (se passássemos mais
         # do que cabe, o Qt encolheria todos e apareceria barra de rolagem).
-        for coluna in (["item", "atendimento"], direita):
+        for coluna in (list(meio), direita):
             paineis = [p[nome] for nome in coluna]
             total = sum(painel.height() + self._altura_abas(painel) for painel in paineis)
             alturas = [self._altura_necessaria(painel) for painel in paineis[:-1]]
@@ -1123,6 +1222,10 @@ class JanelaPrincipal(QMainWindow):
                                ["pagamento", "totais"])
 
     def _ajustar_tamanhos_touch(self):
+        if getattr(self, "_touch_estreito", False):  # (três colunas: o teclado está no meio)
+            self._ajustar_tamanhos([("servicos", 0.30), ("atendimento", 0.40), ("pagamento", 0.30)],
+                                   ["pagamento", "totais"], meio=("item", "teclado", "atendimento"))
+            return
         self._ajustar_tamanhos([("servicos", 0.20), ("atendimento", 0.30), ("teclado", 0.27), ("cliente", 0.23)],
                                ["cliente", "pagamento", "totais"])
 
@@ -1140,9 +1243,10 @@ class JanelaPrincipal(QMainWindow):
         if nome in prontos:
             organizar, ajustar, teclado_grande = prontos[nome]
             self.teclado.definir_grande(teclado_grande)
+            self._recalcular_larguras_minimas()
             organizar()
             # Os tamanhos só podem ser acertados depois que o Qt arrumar os painéis.
-            QTimer.singleShot(0, ajustar)
+            QTimer.singleShot(0, lambda: (self._voltar_para_largura_alvo(), ajustar()))
         else:
             salvo = self.preferencias["layouts_salvos"].get(nome)
             if salvo is None:
@@ -1155,6 +1259,21 @@ class JanelaPrincipal(QMainWindow):
         self.preferencias["layout_atual"] = nome
         self._salvar_preferencias()
         self._status(f"Layout “{nome}” aplicado.")
+
+    def _recalcular_larguras_minimas(self):
+        """
+        Faz cada painel medir de novo a largura mínima do conteúdo. Sem isto, depois de
+        trocar o tamanho das letras (modo tablet) os painéis continuavam pedindo a largura
+        de antes, e a janela ficava mais larga que a tela (cortada à direita).
+        """
+        for painel in self.paineis.values():
+            conteudo = painel.widget().widget()
+            for widget in (conteudo, *conteudo.findChildren(QWidget)):
+                if widget.layout() is not None:
+                    widget.layout().invalidate()
+            if conteudo.layout() is not None:
+                conteudo.layout().activate()
+            painel.widget().updateGeometry()
 
     def _restaurar_estado(self, texto):
         """Põe os painéis como no estado salvo (texto base64). Devolve False se não deu."""
@@ -1785,6 +1904,7 @@ class JanelaPrincipal(QMainWindow):
         tamanho normal e o layout que estava antes.
         """
         ligado = bool(ligado)
+        self._largura_alvo = self.width()  # (o layout tem que caber na largura de agora)
         self.modo_tablet = ligado
         self.acao_tablet.setChecked(ligado)
         self.preferencias["modo_tablet"] = ligado
@@ -1811,7 +1931,12 @@ class JanelaPrincipal(QMainWindow):
                 QScroller.ungrabGesture(area.viewport())
 
     def apos_abrir(self, lancamento=None):
-        """Chamada pelo main.py com a janela já na tela: pergunta do tablet e atualização."""
+        """
+        Chamada pelo main.py com a janela já na tela (depois da tela de abertura):
+        boas-vindas com os dados da loja (só na primeira vez), pergunta do tablet e atualização.
+        """
+        if not self.config.loja_confirmada:
+            self.boas_vindas()
         if not self.modo_tablet and not self.preferencias["tablet_perguntado"] and toque.tem_tela_touch():
             self.preferencias["tablet_perguntado"] = True
             self._salvar_preferencias()
@@ -1823,6 +1948,15 @@ class JanelaPrincipal(QMainWindow):
                 self.definir_modo_tablet(True)
         if lancamento is not None:
             self.oferecer_atualizacao(lancamento)
+
+    def boas_vindas(self):
+        """A janela "Dados da sua loja" (uma vez só: depois fica em Preferências › Loja)."""
+        DialogoBoasVindas(self, self.config.loja).exec()
+        self.loja_alterada()
+
+    def loja_alterada(self):
+        """Os dados da loja mudaram (boas-vindas, Preferências ou Configurar notinhas)."""
+        self.recarregar_config("Dados da loja salvos.")
 
     # ------------------------------------------------------------------
     # Atualizações e dados
@@ -1843,14 +1977,96 @@ class JanelaPrincipal(QMainWindow):
             return
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            lancamento = atualizacao.consultar()
+            situacao, lancamento = atualizacao.verificar()
         finally:
             QApplication.restoreOverrideCursor()
-        if lancamento is None:
-            QMessageBox.information(self, "Atualizações", f"Você já está com a versão mais nova ({versao.VERSAO}), "
-                                    "ou não foi possível consultar agora (sem internet?).")
+        if situacao == atualizacao.ATUAL:
+            QMessageBox.information(self, "Atualizações",
+                                    f"Você já está com a versão mais nova ({versao.VERSAO}).")
+            return
+        if situacao != atualizacao.NOVA:
+            QMessageBox.warning(self, "Atualizações", "Não foi possível consultar as atualizações (sem internet?).\n\n"
+                                "Confira a conexão e tente de novo em Ajuda › Procurar atualizações.")
             return
         self.oferecer_atualizacao(lancamento)
+
+    # ------------------------------------------------------------------
+    # Backup (Arquivo › Backup)
+    # ------------------------------------------------------------------
+
+    def fazer_backup_agora(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            caminho = backup.fazer_backup()
+        except (backup.ErroBackup, OSError, sqlite3.Error) as erro:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, "Backup", str(erro))
+            return
+        QApplication.restoreOverrideCursor()
+        self._status(f"Backup salvo: {caminho}")
+        QMessageBox.information(self, "Backup", f"Backup salvo em:\n{caminho}")
+
+    def escolher_pasta_backup(self):
+        atual = backup.pasta_escolhida(self.config)
+        pasta = QFileDialog.getExistingDirectory(self, "Pasta dos backups (ex.: pendrive ou Google Drive)", atual)
+        if not pasta:
+            return
+        pasta = os.path.normpath(pasta)
+        opcoes = dict(self.config.backup)
+        opcoes["pasta"] = "" if os.path.normcase(pasta) == os.path.normcase(backup.pasta_padrao()) else pasta
+        try:
+            config.atualizar_config(backup=opcoes)
+        except (OSError, ValueError) as erro:
+            QMessageBox.critical(self, "Backup", f"Não foi possível gravar o config.json:\n{erro}")
+            return
+        self.config = config.carregar_config()
+        self._status(f"Os backups vão para: {pasta}")
+
+    def abrir_pasta_backup(self):
+        pasta = backup.pasta_escolhida(self.config)
+        try:
+            os.makedirs(pasta, exist_ok=True)
+            os.startfile(pasta)
+        except OSError as erro:
+            QMessageBox.critical(self, "Backup", f"Não foi possível abrir a pasta:\n{pasta}\n\n{erro}")
+
+    def restaurar_backup(self):
+        if self.carrinho:
+            QMessageBox.information(self, "Restaurar backup", "Finalize ou cancele o atendimento antes.")
+            return
+        if treino.ativo():
+            QMessageBox.information(self, "Restaurar backup", "Saia do modo treinamento antes "
+                                    "(Arquivo › Modo treinamento).")
+            return
+        caminho, _filtro = QFileDialog.getOpenFileName(self, "Restaurar backup", backup.pasta_escolhida(self.config),
+                                                       "Backup do EasyServ (*.zip)")
+        if not caminho:
+            return
+        try:
+            info = backup.ler_backup(caminho)
+        except backup.ErroBackup as erro:
+            QMessageBox.critical(self, "Restaurar backup", str(erro))
+            return
+        resposta = QMessageBox.question(
+            self, "Restaurar backup",
+            f"{backup.descrever(info)}\n\nTrocar TODOS os dados de agora (atendimentos, serviços, preços, "
+            "dados da loja e notinhas) pelos deste backup?\n\nAntes, o programa faz um backup do estado atual "
+            "(nada se perde). Depois ele fecha para você abrir de novo.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if resposta != QMessageBox.Yes:
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            seguranca = backup.restaurar_backup(caminho)
+        except (backup.ErroBackup, OSError, sqlite3.Error) as erro:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, "Restaurar backup", str(erro))
+            return
+        QApplication.restoreOverrideCursor()
+        QMessageBox.information(self, "Restaurar backup", "Backup restaurado.\n\nOs dados de antes ficaram em:\n"
+                                f"{seguranca}\n\nO programa vai fechar agora; abra de novo.")
+        self._sem_salvar_ao_fechar = True  # (senão as preferências de agora apagariam as restauradas)
+        self.close()
 
     def abrir_pasta_dados(self):
         os.startfile(config.pasta_base())
@@ -1938,6 +2154,7 @@ class JanelaPrincipal(QMainWindow):
         self._limpar_selecao_servico()
         self._aplicar_textos_atalhos()
         self.atualizar_totais()
+        self._atualizar_titulo()  # (o nome da loja pode ter mudado)
         self._status(mensagem)
 
     def _status(self, texto):

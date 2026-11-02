@@ -141,7 +141,7 @@ for nome, tema in estilo.TEMAS.items():
 # ---------- 3. Layouts ----------
 j.usar_layout("Touch"); esperar(10)
 p = j.paineis
-ok(j.teclado.grande and j.teclado.botoes[0][0].height() >= 84, f"Touch: teclas grandes ({j.teclado.botoes[0][0].height()}px)")
+ok(j.teclado.grande and j.teclado.botoes[0][0].width() >= 72, f"Touch: teclas grandes ({j.teclado.botoes[0][0].width()}px)")
 ok(p["teclado"].height() > p["atendimento"].height() * 0.8, "Touch: teclado ocupa a coluna inteira")
 ok(p["servicos"].x() < p["item"].x() < p["teclado"].x() < p["cliente"].x(), "Touch: colunas na ordem")
 cortados("layout Touch")

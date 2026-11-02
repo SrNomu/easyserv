@@ -19,6 +19,11 @@ o funcionário digita esse valor e o programa soma a taxa do serviço; o valor d
 boleto/recarga só serve para o troco e fica guardado à parte no banco (nunca
 entra no faturamento, nas notinhas nem nos totais do relatório).
 
+Dados da loja ("loja": nome, endereço, telefone, CNPJ e logo): ficam SÓ aqui e
+valem para o programa inteiro (título da janela, notinhas, relatórios e páginas de
+teste). São preenchidos na janela de boas-vindas da primeira vez que o programa abre
+("loja_confirmada" vira true) e mudam em Arquivo › Preferências › Loja.
+
 Cada serviço tem também:
   "id"                -> um código que nunca muda (as teclas de atalho usam ele);
                          criado sozinho na primeira vez que o programa abre;
@@ -92,8 +97,13 @@ ARQUIVO_CONFIG = os.path.join(pasta_base(), "config.json")
 #   "unidade" -> preço x quantidade (xerox, impressão, consulta, recargas, boletos...)
 #   "valor"   -> o cliente informa um valor e soma-se a taxa (não é mais usado pelos
 #                serviços de fábrica, mas continua funcionando se alguém configurar)
+LOJA_PADRAO = {"nome": "Minha Loja", "endereco": "", "telefone": "", "cnpj": "", "logo": ""}
+CAMPOS_LOJA = tuple(LOJA_PADRAO)
+
 CONFIG_PADRAO = {
-    "nome_loja": "Minha Loja",
+    "nome_loja": "Minha Loja",       # (cópia de loja["nome"], para versões antigas lerem)
+    "loja": dict(LOJA_PADRAO),
+    "loja_confirmada": False,        # False = mostra a janela "Dados da sua loja" ao abrir
     "servicos": [
         {"grupo": "Impressão e documentos", "nome": "Xerox", "tipo": "unidade", "preco": 0.50},
         {"grupo": "Impressão e documentos", "nome": "Xerox colorida", "tipo": "unidade", "preco": 1.50},
@@ -115,6 +125,9 @@ CONFIG_PADRAO = {
     "dados_cliente": {"guardar": "apagar", "dias": 30},
     # Opções do atendimento (Arquivo › Preferências › Atendimento).
     "atendimento": {"pedir_valor_terceiros": False, "mostrar_repasses": False},
+    # Backup (Arquivo › Backup): pasta escolhida (vazio = backups/ na pasta de dados) e
+    # se faz backup sozinho ao fechar o expediente (Preferências › Backup).
+    "backup": {"pasta": "", "ao_fechar_expediente": False},
 }
 
 # Serviços de fábrica que cobram valor de terceiros. Vale para o config.json de versões
@@ -181,6 +194,9 @@ class Configuracao:
     categorias: list = None             # nomes das categorias, na ordem
     # {"pedir_valor_terceiros": False, "mostrar_repasses": False}
     atendimento: dict = None
+    loja: dict = None                   # {"nome", "endereco", "telefone", "cnpj", "logo"}
+    loja_confirmada: bool = True        # False = ainda não passou pela janela de boas-vindas
+    backup: dict = None                 # {"pasta": "", "ao_fechar_expediente": False}
 
     def pede_valor(self, servico):
         """True se, para este serviço, o funcionário digita o valor do boleto/recarga."""
@@ -257,7 +273,7 @@ def carregar_config():
 
     if not isinstance(dados, dict) or not isinstance(dados.get("servicos", []), list):
         raise ErroConfig("O config.json precisa ter a lista \"servicos\".")
-    if _garantir_ids(dados):
+    if _garantir_ids(dados) | _garantir_loja(dados):
         try:
             salvar_config(dados)  # grava os ids novos, para eles não mudarem mais
         except OSError:
@@ -302,14 +318,18 @@ def carregar_config():
     for forma, valor in dados.get("taxas_maquininha", {}).items():
         taxas[forma] = _para_decimal(valor, f"taxa da maquininha ({forma})")
 
+    loja = conferir_loja(dados.get("loja"))
     return Configuracao(
-        nome_loja=dados.get("nome_loja", CONFIG_PADRAO["nome_loja"]),
+        nome_loja=loja["nome"],
         servicos=servicos,
         taxas_maquininha=taxas,
         dados_cliente=_dados_cliente(dados.get("dados_cliente")),
         servicos_desativados=desativados,
         categorias=categorias,
         atendimento=_atendimento(dados.get("atendimento")),
+        loja=loja,
+        loja_confirmada=dados.get("loja_confirmada") is not False,
+        backup=_backup(dados.get("backup")),
     )
 
 
@@ -333,3 +353,81 @@ def _atendimento(valor):
             if isinstance(valor.get(chave), bool):
                 resultado[chave] = valor[chave]
     return resultado
+
+
+def conferir_loja(valor):
+    """Os dados da loja, conferidos (o que faltar ou estiver errado fica vazio)."""
+    resultado = dict(LOJA_PADRAO)
+    if isinstance(valor, dict):
+        for chave in CAMPOS_LOJA:
+            if isinstance(valor.get(chave), str):
+                resultado[chave] = valor[chave].strip()
+    if not resultado["nome"]:
+        resultado["nome"] = LOJA_PADRAO["nome"]
+    return resultado
+
+
+def _garantir_loja(dados):
+    """
+    config.json de antes da 1.4 (sem "loja"): junta o nome que já estava configurado
+    e o cabeçalho que estava no layout das notinhas, para a pessoa só confirmar na
+    janela de boas-vindas. True se mudou algo (para gravar).
+    """
+    if isinstance(dados.get("loja"), dict):
+        return False
+    loja = dict(LOJA_PADRAO)
+    if isinstance(dados.get("nome_loja"), str) and dados["nome_loja"].strip():
+        loja["nome"] = dados["nome_loja"].strip()
+    antigo = _cabecalho_do_layout_antigo()
+    for chave_layout, chave in (("nome_loja", "nome"), ("endereco", "endereco"), ("telefone", "telefone"),
+                                ("cnpj", "cnpj"), ("logo", "logo")):
+        if antigo.get(chave_layout):
+            loja[chave] = antigo[chave_layout]
+    dados["loja"] = loja
+    dados["loja_confirmada"] = False
+    return True
+
+
+def _cabecalho_do_layout_antigo():
+    """O cabeçalho que o layout_notas.json guardava até a 1.3 (nota da loja; senão, a do cliente)."""
+    try:
+        with open(os.path.join(pasta_base(), "layout_notas.json"), "r", encoding="utf-8") as arquivo:
+            layout = json.load(arquivo)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    resultado = {}
+    for via in ("cliente", "loja"):  # a da loja ganha (vem por último)
+        modelo = layout.get(via) if isinstance(layout, dict) else None
+        if isinstance(modelo, dict):
+            for chave in ("nome_loja", "endereco", "telefone", "cnpj", "logo"):
+                if isinstance(modelo.get(chave), str) and modelo[chave].strip():
+                    resultado[chave] = modelo[chave].strip()
+    return resultado
+
+
+def salvar_loja(loja, confirmada=True):
+    """Grava os dados da loja no config.json (o resto do arquivo não muda)."""
+    with open(ARQUIVO_CONFIG, "r", encoding="utf-8") as arquivo:
+        dados = json.load(arquivo)
+    dados["loja"] = conferir_loja(loja)
+    dados["nome_loja"] = dados["loja"]["nome"]
+    dados["loja_confirmada"] = confirmada
+    salvar_config(dados)
+
+
+def _backup(valor):
+    resultado = dict(CONFIG_PADRAO["backup"])
+    if isinstance(valor, dict):
+        if isinstance(valor.get("pasta"), str):
+            resultado["pasta"] = valor["pasta"]
+        if isinstance(valor.get("ao_fechar_expediente"), bool):
+            resultado["ao_fechar_expediente"] = valor["ao_fechar_expediente"]
+    return resultado
+
+
+def atualizar_config(**chaves):
+    """Grava só estas chaves no config.json (ex.: backup={...}); o resto continua igual."""
+    with open(ARQUIVO_CONFIG, "r", encoding="utf-8") as arquivo:
+        dados = json.load(arquivo)
+    dados.update(chaves)
+    salvar_config(dados)

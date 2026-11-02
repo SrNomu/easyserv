@@ -111,10 +111,11 @@ salvos = []
 t = tela_notinhas.TelaNotinhas(j3, ao_salvar=salvos.append); t.show(); QTest.qWait(600)
 ok(t.lbl_imagem.pixmap() is not None and not t.lbl_imagem.pixmap().isNull(), "pré-visualização desenhada")
 t.radios_modelo["cliente"].setChecked(True); QTest.qWait(50)
-t.campo_endereco.setText("Rua das Flores, 123"); t.checks_mostrar["quantidade"].setChecked(False)
+t.checks_cabecalho["loja_endereco"].setChecked(False); t.checks_mostrar["quantidade"].setChecked(False)
 t.radios_papel["58mm"].setChecked(True); t.spin_fonte.setValue(8); QTest.qWait(400)
-ok(t.dados["cliente"]["endereco"] == "Rua das Flores, 123" and t.dados["cliente"]["papel"] == "58mm"
-   and t.dados["loja"]["papel"] == "80mm", "edita só o modelo do cliente")
+ok(t.dados["cliente"]["mostrar"]["loja_endereco"] is False and t.dados["cliente"]["papel"] == "58mm"
+   and t.dados["loja"]["papel"] == "80mm" and t.dados["loja"]["mostrar"]["loja_endereco"] is True,
+   "edita só o modelo do cliente")
 ok("58mm" in t.lbl_info_previa.text(), f"info: {t.lbl_info_previa.text()}")
 t.grab().save(os.path.join(saida, "print_notinhas.png"))
 t.salvar(); ok(json.load(open("layout_notas.json", encoding="utf-8"))["cliente"]["papel"] == "58mm" and salvos, "salvou layout_notas.json e avisou a janela")

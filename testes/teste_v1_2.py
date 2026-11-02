@@ -337,6 +337,7 @@ j.definir_modo_tablet(False); esperar(10)
 ok(estilo.escala() == 1.0 and app.styleSheet() == folha_normal and j.preferencias["layout_atual"] == "Padrão", "desligar volta tamanho e layout")
 n = len(teclados); j.entry_nome.setFocus(); esperar(2); ok(len(teclados) == n, "fora do tablet não abre teclado")
 # Tela de toque detectada
+j.config.loja_confirmada = True  # (a janela de boas-vindas da 1.4 é testada no teste_v1_4)
 toque.tem_tela_touch = lambda: True
 j.preferencias["tablet_perguntado"] = False; resposta["v"] = QMessageBox.No; n = len(perguntas)
 j.apos_abrir(None); ok(len(perguntas) == n + 1 and "toque" in perguntas[-1][1].lower() and not j.modo_tablet, "tela de toque: oferece o modo tablet")

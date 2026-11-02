@@ -46,7 +46,12 @@ BOTOES = [
 
 # (tamanho mínimo, altura máxima) de cada botão, em pixels.
 TAMANHO_NORMAL = (56, 88)    # já é bom para o dedo numa tela touch
-TAMANHO_GRANDE = (84, 140)   # layout "Touch": teclas bem grandes
+# Layout "Touch": teclas bem grandes. O mínimo é 72 (e não mais): as teclas crescem
+# sozinhas até o máximo quando tem espaço, e com 84 o teclado não cabia em telas de 1440 px.
+TAMANHO_GRANDE = (72, 140)
+# Touch em três colunas (tela menor): o teclado fica no meio, embaixo do "Adicionar item",
+# e as teclas podem ser mais baixas, para sobrar altura para a lista do atendimento.
+ALTURA_MINIMA_BAIXO = 56
 
 DICAS = {"apagar": "Apagar", "limpar": "Limpar o campo", "enter": "Enter"}
 
@@ -100,14 +105,18 @@ class TecladoNumerico(QWidget):
             grade.setColumnStretch(i, 1)
         self.definir_grande(False)
 
-    def definir_grande(self, grande):
-        """Teclas normais ou grandes (layout "Touch"). As letras também crescem (estilo.py)."""
+    def definir_grande(self, grande, baixo=False):
+        """
+        Teclas normais ou grandes (layout "Touch"). As letras também crescem (estilo.py).
+        baixo=True: teclas grandes, mas que podem ser mais baixas (Touch em três colunas).
+        """
         self.grande = grande
         minimo, maximo = TAMANHO_GRANDE if grande else TAMANHO_NORMAL
+        minimo_altura = ALTURA_MINIMA_BAIXO if grande and baixo else minimo
         espaco = self.grade.spacing()
         for botao, altura in self.botoes:
             botao.setProperty("grande", grande)
-            botao.setMinimumSize(minimo, minimo * altura + espaco * (altura - 1))
+            botao.setMinimumSize(minimo, minimo_altura * altura + espaco * (altura - 1))
             # Os botões crescem junto com o painel (até um limite, para não virarem tijolos).
             botao.setMaximumHeight(maximo * altura + espaco * (altura - 1))
         repintar(self)

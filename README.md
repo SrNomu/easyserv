@@ -28,6 +28,7 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 - Modo treinamento, com um banco separado, para aprender sem mexer no caixa.
 
 **Notinhas**
+- Dados da loja (nome, endereço, telefone, CNPJ e logo) preenchidos uma vez só, na janela de boas-vindas, e usados no programa inteiro: título da janela, notinhas, relatórios e páginas de teste.
 - Via da loja (salva em .txt) e via do cliente (impressa), com editor visual e pré-visualização.
 - Papel de 58 mm, 80 mm ou A4, logo, fonte, alinhamento e o que mostrar em cada via.
 - Funciona com impressoras térmicas de texto e com qualquer impressora do Windows.
@@ -39,12 +40,13 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 
 **Do seu jeito**
 - Tela "Serviços e preços": criar, renomear, reordenar (arrastando) e remover serviços e categorias.
-- Painéis que se movem e se encaixam, layouts prontos (Padrão, Compacto, Touch) e layouts salvos com nome.
+- Painéis que se movem e se encaixam, layouts prontos (Padrão, Compacto, Touch) e layouts salvos com nome. O Touch se ajusta a telas menores (1440 px ou menos).
 - Modo claro e escuro (ou seguindo o Windows), editor de cores e temas salvos.
 - Modo tablet: tudo maior, rolagem com o dedo e teclado do Windows ao tocar no campo Nome.
 
 **Cuidados**
 - Privacidade: o nome e o telefone do cliente nunca aparecem nos relatórios, e você escolhe se eles ficam guardados (e por quantos dias).
+- Backup completo em .zip (atendimentos, serviços, preços, dados da loja e notinhas), na pasta que você escolher (pendrive, Google Drive...), com restauração e backup automático ao fechar o expediente.
 - Tela de abertura que confere os arquivos do programa e o banco de dados.
 - Atualização automática pelo GitHub Releases: pergunta antes, nunca no meio de um atendimento, confere o SHA-256 e faz backup antes de instalar.
 - Os dados ficam em `%APPDATA%\EasyServ`, separados do programa: atualizar nunca apaga nada.
@@ -69,18 +71,22 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 
 ![Cores do programa](docs/prints/08_cores.png)
 
-**Layouts** - Compacto e Touch (teclado grande no meio).
+**Layouts** - Compacto e Touch (teclado grande no meio), numa tela de 1440 px.
 
 | Compacto | Touch |
 |---|---|
 | ![Layout Compacto](docs/prints/04_layout_compacto.png) | ![Layout Touch](docs/prints/05_layout_touch.png) |
 
-**Modo tablet** - tudo maior, para usar com o dedo.
+**Modo tablet** - tudo maior, para usar com o dedo. Em telas menores, o teclado vai para baixo do "Adicionar item".
 
 ![Modo tablet](docs/prints/06_modo_tablet.png)
 
 <details>
 <summary>Mais telas</summary>
+
+**Dados da sua loja:** a janela de boas-vindas, na primeira vez que o programa abre.
+
+![Dados da sua loja](docs/prints/15_boas_vindas.png)
 
 **Boleto com valor:** a conta aparece enquanto o funcionário digita.
 
@@ -114,7 +120,7 @@ O balcão de uma loja de serviços digitais é cheio de vendas pequenas e rápid
 | **openpyxl** | exportação do relatório para Excel |
 | **Pillow** e **pywin32** | desenho e impressão das notinhas no Windows |
 | **PyInstaller** e **Inno Setup** | o programa (.exe) e o instalador |
-| **Testes automáticos** | 663 verificações em 9 baterias (veja [Testes](#testes)) |
+| **Testes automáticos** | 752 verificações em 10 baterias (veja [Testes](#testes)) |
 
 ## Como instalar
 
@@ -141,7 +147,7 @@ Para gerar o programa e o instalador, é preciso também o [Inno Setup 6](https:
 
 ## Testes
 
-O projeto tem **9 baterias de testes automáticos, com 663 verificações**, na pasta [`testes/`](testes). Elas abrem as telas de verdade e conferem as contas (troco, taxa da maquininha, boletos), as notinhas, o relatório (tela, PDF, Excel e resumo), os atalhos, os layouts, a privacidade dos dados do cliente, o instalador e a atualização automática.
+O projeto tem **10 baterias de testes automáticos, com 752 verificações**, na pasta [`testes/`](testes). Elas abrem as telas de verdade e conferem as contas (troco, taxa da maquininha, boletos), as notinhas, os dados da loja, o relatório (tela, PDF, Excel e resumo), os atalhos, os layouts (inclusive em telas de 1280 a 1440 px), o backup e a restauração, a privacidade dos dados do cliente, o instalador e a atualização automática.
 
 ```bat
 python testes\rodar_testes.py

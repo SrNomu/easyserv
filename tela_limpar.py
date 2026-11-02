@@ -106,11 +106,15 @@ class TelaLimpar(QDialog):
         coluna.addWidget(explicacao)
 
         # --- Confirmação ---
-        coluna.addWidget(_rotulo(f"Para confirmar, digite {PALAVRA}:"))
+        coluna.addWidget(_rotulo(f"Para confirmar, digite a palavra {PALAVRA} no campo abaixo:"))
         self.campo_confirmar = QLineEdit()
         self.campo_confirmar.setPlaceholderText(PALAVRA)
         self.campo_confirmar.textChanged.connect(self._atualizar)
         coluna.addWidget(self.campo_confirmar)
+        # Texto de ajuda SEMPRE visível (a dica apagada dentro do campo some ao digitar).
+        self.lbl_ajuda_confirmar = _rotulo("", "rotulo")
+        self.lbl_ajuda_confirmar.setWordWrap(True)
+        coluna.addWidget(self.lbl_ajuda_confirmar)
         self.lbl_aviso = _rotulo("", "aviso")
         self.lbl_aviso.setWordWrap(True)
         coluna.addWidget(self.lbl_aviso)
@@ -153,6 +157,13 @@ class TelaLimpar(QDialog):
             self.lbl_quantos.setText(f"Serão apagados {self.quantidade} atendimento{plural} (de {total} no banco).")
         digitou = self.campo_confirmar.text().strip().upper() == PALAVRA
         self.btn_apagar.setEnabled(digitou and self.quantidade > 0)
+        if not digitou:
+            self.lbl_ajuda_confirmar.setText(f"O botão \"Fazer backup e apagar\" só é liberado depois que você "
+                                             f"digitar {PALAVRA} (com todas as letras) no campo acima.")
+        elif self.quantidade == 0:
+            self.lbl_ajuda_confirmar.setText("Palavra certa, mas não há atendimentos para apagar.")
+        else:
+            self.lbl_ajuda_confirmar.setText("Pronto: o botão \"Fazer backup e apagar\" está liberado.")
 
     def apagar(self):
         if self.campo_confirmar.text().strip().upper() != PALAVRA or self.quantidade == 0:
