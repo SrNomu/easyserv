@@ -143,7 +143,7 @@ python main.py
 
 Rodando pelo código, os dados (banco, configurações, notas) ficam na própria pasta do projeto; o `.gitignore` não deixa que eles subam para o GitHub.
 
-Para gerar o programa e o instalador, é preciso também o [Inno Setup 6](https://jrsoftware.org/isdl.php). Depois é só rodar `python ferramentas\gerar_instalador.py` (o passo a passo para publicar uma versão está em `ferramentas/COMO_PUBLICAR.txt`).
+Para gerar o programa e o instalador, é preciso também o [Inno Setup 6.6 ou mais novo](https://jrsoftware.org/isdl.php) (por causa do modo escuro do instalador). Depois é só rodar `python ferramentas\gerar_instalador.py` (o passo a passo para publicar uma versão está em `ferramentas/COMO_PUBLICAR.txt`).
 
 ## Testes
 

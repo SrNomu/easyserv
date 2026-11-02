@@ -4,7 +4,8 @@ ferramentas/gerar_icones.py - Gera, a partir da logo (recursos/easyserv.svg):
   recursos/easyserv.ico          ícone do .exe, da barra de tarefas, da barra de título
                                  e do instalador (16 a 256 px, tudo num arquivo só);
   recursos/easyserv.png          a logo em 512 px (tela de abertura e janela Sobre);
-  recursos/instalador_*.bmp      imagens das telas do instalador (Inno Setup).
+  recursos/instalador_*.png      imagens das telas do instalador (Inno Setup), no visual da
+                                 tela de abertura: fundo escuro em degradê, logo e rosa.
 
 Rode de novo só se mudar a logo:   python ferramentas\\gerar_icones.py
 (O ferramentas\\gerar_instalador.py já chama este script.)
@@ -15,13 +16,14 @@ import struct
 import sys
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QGuiApplication, QImage, QPainter
+from PySide6.QtGui import QColor, QGuiApplication, QImage, QLinearGradient, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
 PASTA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "recursos")
 SVG = os.path.join(PASTA, "easyserv.svg")
 TAMANHOS_ICO = (16, 20, 24, 32, 40, 48, 64, 128, 256)
-VINHO = "#8c2f57"
+# As cores da tela de abertura (tela_abertura.py), para o instalador ficar igual a ela.
+FUNDO, FUNDO_2 = "#1b1719", "#2a1520"
 
 
 def desenhar(renderizador, largura, altura=None, fundo=Qt.transparent):
@@ -58,20 +60,30 @@ def salvar_ico(renderizador, caminho):
         arquivo.write(cabecalho + entradas + dados)
 
 
-def imagem_lateral(renderizador, largura, altura):
-    """Faixa da esquerda da tela de boas-vindas do instalador: vinho com a logo e o nome."""
+def imagem_fundo(largura, altura):
+    """Fundo de todas as telas do instalador: o mesmo degradê da tela de abertura."""
     imagem = QImage(largura, altura, QImage.Format_RGB32)
-    imagem.fill(QColor(VINHO))
+    pintor = QPainter(imagem)
+    degrade = QLinearGradient(0, 0, largura, altura)
+    degrade.setColorAt(0, QColor(FUNDO_2))
+    degrade.setColorAt(0.55, QColor(FUNDO))
+    pintor.fillRect(0, 0, largura, altura, degrade)
+    pintor.end()
+    return imagem
+
+
+def imagem_lateral(renderizador, largura, altura):
+    """
+    Faixa da esquerda das telas de boas-vindas e final: só a logo, grande, sobre fundo
+    transparente (o degradê do fundo aparece por trás), na altura do nome "EasyServ".
+    """
+    imagem = QImage(largura, altura, QImage.Format_ARGB32)
+    imagem.fill(Qt.transparent)
     pintor = QPainter(imagem)
     pintor.setRenderHint(QPainter.Antialiasing)
-    lado = int(largura * 0.62)
-    renderizador.render(pintor, QRectF((largura - lado) / 2, altura * 0.22, lado, lado))
-    fonte = QFont("Segoe UI", 1, QFont.Bold)
-    fonte.setPixelSize(int(largura * 0.15))
-    pintor.setFont(fonte)
-    pintor.setPen(QColor("white"))
-    pintor.drawText(QRectF(0, altura * 0.22 + lado + largura * 0.08, largura, largura * 0.25), Qt.AlignHCenter,
-                    "EasyServ")
+    pintor.setRenderHint(QPainter.SmoothPixmapTransform)
+    lado = largura * 0.64
+    renderizador.render(pintor, QRectF((largura - lado) / 2, altura * 0.075, lado, lado))
     pintor.end()
     return imagem
 
@@ -83,12 +95,11 @@ def main():
         raise SystemExit(f"Não consegui ler {SVG}")
     salvar_ico(renderizador, os.path.join(PASTA, "easyserv.ico"))
     desenhar(renderizador, 512).save(os.path.join(PASTA, "easyserv.png"))
-    # Inno Setup: tamanhos para 100% e 200% de zoom do Windows.
-    for escala in (1, 2):
-        imagem_lateral(renderizador, 164 * escala, 314 * escala).save(
-            os.path.join(PASTA, f"instalador_lateral_{escala}x.bmp"))
-        desenhar(renderizador, 55 * escala, fundo=QColor("white")).convertToFormat(QImage.Format_RGB32).save(
-            os.path.join(PASTA, f"instalador_pequena_{escala}x.bmp"))
+    # Inno Setup 6.7: tamanhos das áreas com zoom do Windows em 100% e 200%.
+    for escala, fundo, lateral, pequena in ((1, (596, 432), (202, 386), 58), (2, (1272, 922), (430, 824), 124)):
+        imagem_fundo(*fundo).save(os.path.join(PASTA, f"instalador_fundo_{escala}x.png"))
+        imagem_lateral(renderizador, *lateral).save(os.path.join(PASTA, f"instalador_lateral_{escala}x.png"))
+        desenhar(renderizador, pequena).save(os.path.join(PASTA, f"instalador_pequena_{escala}x.png"))
     print("Ícones gerados em", PASTA)
     del app
 

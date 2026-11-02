@@ -96,7 +96,7 @@ lados = [dados_ico[6 + 16 * i] or 256 for i in range(qtd)]
 ok(tipo == 1 and lados == [16, 20, 24, 32, 40, 48, 64, 128, 256], f"ícone .ico com {lados}")
 icone = QIcon(config.recurso("easyserv.ico"))
 ok(not icone.isNull() and len(icone.availableSizes()) >= 5, f"Qt lê o ícone ({len(icone.availableSizes())} tamanhos)")
-for nome in ("instalador_lateral_1x.bmp", "instalador_pequena_1x.bmp", "easyserv.png"):
+for nome in ("instalador_fundo_1x.png", "instalador_lateral_1x.png", "instalador_pequena_1x.png", "easyserv.png"):
     ok(os.path.exists(config.recurso(nome)), f"recurso {nome}")
 
 # ====================================================================

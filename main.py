@@ -8,6 +8,8 @@ A abertura acontece nesta ordem, com a tela de abertura mostrando cada etapa:
   2. Carregando banco de dados...  (configurações e banco abrem sem erro?)
   3. Procurando atualizações...    (no GitHub; sem internet, segue normal)
   4. Abre a janela principal e, se tiver versão nova, pergunta se quer atualizar.
+
+    EasyServ.exe --backup-para <pasta>   (só faz um backup, sem janela: usado pelo desinstalador)
 """
 
 import ctypes
@@ -88,7 +90,23 @@ def avisar_problemas(abertura, problemas):
     abertura.show()
 
 
+def backup_sem_janela(pasta):
+    """
+    EasyServ.exe --backup-para <pasta>: faz o backup (o mesmo do menu Arquivo › Backup)
+    sem abrir nenhuma janela. Quem usa é o desinstalador, antes de apagar os dados.
+    Devolve o código de saída: 0 = backup feito, 1 = não deu.
+    """
+    import backup  # (só aqui: abrir o programa normal não precisa dele tão cedo)
+    try:
+        backup.fazer_backup(pasta)
+    except (backup.ErroBackup, OSError, sqlite3.Error):
+        return 1
+    return 0
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "--backup-para":
+        return backup_sem_janela(sys.argv[2])
     identificar_no_windows()
     app = QApplication(sys.argv)  # o "motor" do Qt: precisa existir antes de qualquer janela
     app.setApplicationName(versao.NOME_PROGRAMA)

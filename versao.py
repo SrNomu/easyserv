@@ -10,7 +10,7 @@ Ao lançar uma versão nova:
 """
 
 NOME_PROGRAMA = "EasyServ"
-VERSAO = "1.4"
+VERSAO = "1.4.1"
 AUTOR = "Pedro"
 ANO = "2026"
 COPYRIGHT = f"© {ANO} {AUTOR}. Todos os direitos reservados."
@@ -36,6 +36,14 @@ BIBLIOTECAS = [
 
 # (versão, data, [o que mudou]) - a mais nova primeiro.
 NOTAS_DA_VERSAO = [
+    ("1.4.1", "novembro de 2026", [
+        "Instalador com o visual da tela de abertura: fundo escuro em degradê vinho, logo grande, "
+        "\"EasyServ\" com a versão em rosa e os direitos no rodapé.",
+        "Textos do instalador revisados em português e opção \"Abrir o EasyServ agora\" no final.",
+        "Desinstalador no mesmo visual e com uma tela clara para os dados: \"Manter seus dados\" (padrão) "
+        "ou \"Apagar tudo\", com um backup na Área de Trabalho antes de apagar.",
+        "Atalho \"Desinstalar EasyServ\" no menu Iniciar.",
+    ]),
     ("1.4", "novembro de 2026", [
         "Dados da loja num lugar só: na primeira vez que o programa abre aparece a janela \"Dados da sua "
         "loja\" (nome, endereço, telefone, CNPJ e logo). Depois eles ficam em Arquivo › Preferências › Loja "

@@ -384,4 +384,24 @@ j.definir_modo_tablet(True); esperar(10); j.definir_modo_tablet(False); esperar(
 ok(j.preferencias["layout_atual"] == "Padrão" and j.minimumSizeHint().width() <= largura_padrao + 2, f"depois de desligar o tablet a janela não fica mais larga ({j.minimumSizeHint().width()} x {largura_padrao})")
 j._sem_salvar_ao_fechar = True; j.close()
 
+# ====================================================================
+# 1.4.1: backup sem janela (o desinstalador usa antes de "Apagar tudo")
+# ====================================================================
+print("--- backup sem janela (EasyServ.exe --backup-para)")
+import main
+area_de_trabalho = os.path.join(saida, "area_de_trabalho"); os.makedirs(area_de_trabalho)
+ok(main.backup_sem_janela(area_de_trabalho) == 0, "código 0 quando o backup dá certo")
+zips = glob.glob(os.path.join(area_de_trabalho, "EasyServ_backup_*.zip"))
+ok(len(zips) == 1, "um .zip na pasta pedida")
+info = backup.ler_backup(zips[0])
+ok(info["banco"] and info["versao"] == versao.VERSAO, "o .zip é um backup que dá para restaurar")
+with zipfile.ZipFile(zips[0]) as z:
+    ok("config.json" in z.namelist() and backup.ARQUIVO_INFO in z.namelist(), "leva o config.json e a ficha do backup")
+arquivo_no_lugar = os.path.join(saida, "nao_e_pasta.txt"); open(arquivo_no_lugar, "w").close()
+ok(main.backup_sem_janela(arquivo_no_lugar) == 1, "código 1 quando não dá (o desinstalador então NÃO apaga os dados)")
+iss = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "instalador", "EasyServ.iss"), encoding="utf-8-sig").read()
+ok("--backup-para" in iss and "Manter seus dados (atendimentos, configurações, backups)" in iss and "Apagar tudo" in iss,
+   "desinstalador: tela Manter / Apagar tudo com backup antes")
+ok('Name: "{group}\\Desinstalar {#Nome}"' in iss, "atalho Desinstalar EasyServ no menu Iniciar")
+
 print(f"\n{len(falhas)} falha(s)")
